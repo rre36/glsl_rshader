@@ -6,6 +6,12 @@
 
 #define setBitdepth 8       //[6 8 10 12]
 
+#define setBrightness 1.0   //[0.5 0.6 0.7 0.8 0.9 1.0 1.02 1.1 1.2 1.3 1.4 1.5]
+#define setContrast 1.0    //[0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.98 1.0 1.05 1.1 1.15 1.2 1.25 1.3]
+#define setCurve 1.01       //[0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.90 0.92 0.94 0.96 0.98 1.0 1.02 1.04 1.06 1.08 1.1 1.15 1.2 1.25 1.3 1.35 1.4 1.45 1.5]
+#define setSaturation 1.02   //[0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.02 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
+
+
 const bool colortex0MipmapEnabled = true;
 
 uniform sampler2D colortex0;
@@ -113,6 +119,21 @@ void imageDither() {
     scene.sdr = vec3(colR, colG, colB)/bits;
 }
 
+vec3 brightenContrast(vec3 x, const float brighten, const float contrast) {
+    return (x - 0.5) * contrast + 0.5 + brighten;
+}
+vec3 curve(vec3 x, const float exponent) {
+    return vec3(pow(abs(x.r), exponent),pow(abs(x.g), exponent),pow(abs(x.b), exponent));
+}
+
+void colorGrading() {
+    scene.sdr     = curve(scene.sdr, setCurve);
+    scene.sdr     = brightenContrast(scene.sdr, setBrightness-1.0, setContrast);
+    float imageLuma = getLuma(scene.sdr);
+    scene.sdr     = mix(vec3(imageLuma), scene.sdr, setSaturation);
+    scene.sdr    *= vec3(1.0, 1.03, 1.0);
+}
+
 void main() {
     scene.hdr       = textureLod(colortex0, coord, 0).rgb;
     scene.sdr       = scene.hdr;
@@ -129,6 +150,8 @@ void main() {
     #endif
 
     reinhardTonemap();
+
+    colorGrading();
 
     imageDither();
 

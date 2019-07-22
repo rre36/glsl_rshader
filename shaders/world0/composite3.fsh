@@ -2,7 +2,7 @@
 #include "/lib/util/math.glsl"
 #include "/lib/global.glsl"
 
-const float bloomIntensity  = 0.1;
+const float bloomIntensity  = 0.07;
 
 uniform sampler2D colortex0;    //scene color
 uniform sampler2D colortex4;

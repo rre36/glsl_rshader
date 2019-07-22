@@ -3,12 +3,12 @@
 #include "/lib/util/math.glsl"
 
 const float shadowIllumination  = 0.0;
-const float sunlightLuma        = 2.5;
+const float sunlightLuma        = 5.5;
 const float skylightLuma        = 0.1;
 const float minLight            = 0.01;
 const vec3 minLightColor        = vec3(0.8, 0.9, 1.0);
-const float lightLuma           = 1.0;
-const vec3 lightColor           = vec3(1.0, 0.42, 0.0);
+const float lightLuma           = 2.0;
+const vec3 lightColor           = vec3(1.0, 0.26, 0.0);
 
 
 /* ------ uniforms ------ */

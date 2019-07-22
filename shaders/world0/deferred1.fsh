@@ -17,7 +17,7 @@ const int colortex6Format   = RGBA16;
 
 /* ------ internal parameters ------ */
 
-const float sunPathRotation = -12.5;
+const float sunPathRotation = -17.5;
 
 const float wetnessHalflife = 300.0;
 const float drynessHalflife = 100.0;
