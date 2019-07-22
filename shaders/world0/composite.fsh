@@ -156,7 +156,7 @@ vec3 skyGradient() {
     float horizonGrad = 1.0-max(hBottom, hTop);
 
     float horizon   = linStep(horizonGrad, 0.15, 0.31);
-        horizon     = pow6(horizon)*0.8;
+        horizon     = pow5(horizon)*0.8;
 
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
@@ -167,7 +167,8 @@ vec3 skyGradient() {
         horizonGlow = saturate(horizonGlow*0.75);
 
     float sunGlow   = linStep(sunGrad, 0.5, 0.98);
-        sunGlow     = pow6(sunGlow);
+        sunGlow     = pow5(sunGlow);
+        sunGlow    *= 1.0-timeNoon*0.8;
 
     float moonGlow  = pow(moonGrad*0.85, 15.0);
         moonGlow    = saturate(moonGlow*1.05)*0.8;
@@ -269,7 +270,7 @@ void vcloud() {
             height     -= heightStep*ditherDynamic;
     }
 
-    vec3 lightColor     = mix(colSunglow*60.0, light.sky*30.5, timeLightTransition);
+    vec3 lightColor     = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
         lightColor     *= mix(vec3(1.0), vec3(1.1, 0.4, 0.2), timeSunrise+timeSunset*0.8);
     vec3 rayleighColor  = colSky*1.5;
 

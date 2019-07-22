@@ -140,7 +140,7 @@ void skyGradient() {
     float hBottom   = dot(hVec2, nFrag);
 
     float horizonFade = linStep(hBottom, 0.3, 0.8);
-        horizonFade = pow4(horizonFade)*0.75;
+        horizonFade = pow4(horizonFade)*0.85;
 
     float lowDome   = linStep(hBottom, 0.66, 0.71);
         lowDome     = pow3(lowDome);
@@ -148,7 +148,7 @@ void skyGradient() {
     float horizonGrad = 1.0-max(hBottom, hTop);
 
     float horizon   = linStep(horizonGrad, 0.15, 0.31);
-        horizon     = pow6(horizon)*0.8;
+        horizon     = pow5(horizon)*0.8;
 
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
@@ -159,7 +159,8 @@ void skyGradient() {
         horizonGlow = saturate(horizonGlow*0.75);
 
     float sunGlow   = linStep(sunGrad, 0.5, 0.98);
-        sunGlow     = pow6(sunGlow);
+        sunGlow     = pow5(sunGlow);
+        sunGlow    *= 1.0-timeNoon*0.8;
 
     float moonGlow  = pow(moonGrad*0.85, 15.0);
         moonGlow    = saturate(moonGlow*1.05)*0.8;
@@ -238,7 +239,7 @@ vec3 skyGradientC() {
     float horizonGrad = 1.0-max(hBottom, hTop);
 
     float horizon   = linStep(horizonGrad, 0.15, 0.31);
-        horizon     = pow6(horizon)*0.8;
+        horizon     = pow5(horizon)*0.8;
 
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
@@ -249,7 +250,8 @@ vec3 skyGradientC() {
         horizonGlow = saturate(horizonGlow*0.75);
 
     float sunGlow   = linStep(sunGrad, 0.5, 0.98);
-        sunGlow     = pow6(sunGlow);
+        sunGlow     = pow5(sunGlow);
+        sunGlow    *= 1.0-timeNoon*0.8;
 
     float moonGlow  = pow(moonGrad*0.85, 15.0);
         moonGlow    = saturate(moonGlow*1.05)*0.8;
