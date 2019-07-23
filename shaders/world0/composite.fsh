@@ -137,7 +137,7 @@ vec3 unpackNormal(vec3 x) {
     return x*2.0-1.0;
 }
 
-vec3 skyGradient() {
+vec3 skyGradientC() {
     vec3 nFrag      = -normalize(screenSpacePos(depth.depth).xyz);
     vec3 hVec       = normalize(-vec.up+nFrag);
     vec3 hVec2      = normalize(vec.up+nFrag);
@@ -155,14 +155,14 @@ vec3 skyGradient() {
 
     float horizonGrad = 1.0-max(hBottom, hTop);
 
-    float horizon   = linStep(horizonGrad, 0.15, 0.31);
+    float horizon   = linStep(horizonGrad, 0.12, 0.31);
         horizon     = pow5(horizon)*0.8;
 
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
 
     float horizonGlow = saturate(pow2(sunGrad));
-        horizonGlow = pow3(linStep(horizonGrad, 0.1-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
+        horizonGlow = pow3(linStep(horizonGrad, 0.08-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
         horizonGlow = pow2(horizonGlow*1.3);
         horizonGlow = saturate(horizonGlow*0.75);
 
@@ -173,13 +173,14 @@ vec3 skyGradient() {
     float moonGlow  = pow(moonGrad*0.85, 15.0);
         moonGlow    = saturate(moonGlow*1.05)*0.8;
 
-    vec3 sunLight   = colSunglow*2;
+    vec3 sunColor   = colSunglow*2;
+    vec3 sunLight   = colSunlight;
     vec3 moonColor  = vec3(0.55, 0.75, 1.0)*0.1;
 
     vec3 sky        = mix(colSky, colHorizon, horizonFade);
         sky         = mix(sky, colHorizon, horizon);
         sky         = mix(sky, colHorizon, lowDome);
-        sky         = mix(sky, sunLight, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
+        sky         = mix(sky, sunColor, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
         sky         = mix(sky, moonColor, moonGlow*timeNight);
 
     return sky*3;
@@ -187,13 +188,14 @@ vec3 skyGradient() {
 
 void simpleFog() {
     float falloff   = saturate(length(pos.world.xyz-pos.camera)/far);
-        falloff     = linStep(falloff, s_fogStart, 0.999);
+        falloff     = linStep(falloff, s_fogStart*(1.0-timeSunrise*0.5), 0.999);
         falloff     = pow(falloff, s_fogExp);
     
-    vec3 skyCol     = falloff>0.0 ? skyGradient() : colHorizon;
+    vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;
 
     returnCol       = mix(returnCol, skyCol, falloff);
 }
+
 void simpleFogEyeInWater() {
     vec3 wPosSolid  = worldSpacePos(depth.solid).xyz;
     vec3 wPos       = pos.world.xyz;
@@ -201,10 +203,10 @@ void simpleFogEyeInWater() {
     float transDistance  = length(wPos-pos.camera)/(far*0.8);
     
     float falloff   = saturate(solidDistance-transDistance);
-        falloff     = linStep(falloff, 0.35, 0.999);
+        falloff     = linStep(falloff, s_fogStart*(1.0-timeSunrise*0.5), 0.999);
         falloff     = pow2(falloff);
     
-    vec3 skyCol     = falloff>0.0 ? skyGradient() : colHorizon;
+    vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;
 
     returnCol       = mix(returnCol, skyCol, falloff);
 }
@@ -271,7 +273,7 @@ void vcloud() {
     }
 
     vec3 lightColor     = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
-        lightColor     *= mix(vec3(1.0), vec3(1.1, 0.4, 0.2), timeSunrise+timeSunset*0.8);
+        lightColor     *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), timeSunrise+timeSunset*0.7);
     vec3 rayleighColor  = colSky*1.5;
 
     float cloud         = 0.0;

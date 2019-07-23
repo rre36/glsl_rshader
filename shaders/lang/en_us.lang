@@ -10,6 +10,22 @@ value.setAOQuality.0=Low
 value.setAOQuality.1=Medium
 value.setAOQuality.2=High
 
+screen.cloud=Clouds
+
+option.s_vcAltitude=Altitude
+option.s_vcSamples=Samples
+option.s_vcLightingQuality=Lighting Quality
+value.s_vcLightingQuality.0=Low
+value.s_vcLightingQuality.1=High
+option.s_vcAltitude=Altitude
+option.s_vcThickness=Thickness
+option.s_vcCoverage=Coverage
+option.s_vcDensity=Density
+option.s_vcDetail=Detail
+value.s_vcDetail.0=Medium
+value.s_vcDetail.1=High
+value.s_vcDetail.2=Ultra
+
 option.setFog=Fog
 option.s_fogStart=Fog Start
 option.s_fogExp=Fog Exponent

@@ -129,6 +129,21 @@ vec3 unpackNormal(vec3 x) {
     return x*2.0-1.0;
 }
 
+vec3 getSunDisk(in float sunGrad, in float hBottom, in vec3 sunDiscCol) {
+    float sunDisc   = linStep(sunGrad, 1.0-(0.022+0.006), 1.0-(0.022));
+        sunDisc     = pow2(sunDisc);
+
+    float sunLimb   = linStep(hBottom, 0.58, 0.70);
+        sunLimb     = pow2(sunLimb);
+
+    float sunLimb2   = 1.0-linStep(hBottom, 0.66, 0.71);
+        sunLimb2     = pow2(sunLimb2);
+
+    vec3 sunDiscColMod = mix(vec3(1.0), vec3(1.0, 0.0, 0.0), sunLimb)*sunLimb2;
+
+    return sunDisc*sunDiscCol*sunDiscColMod*25.0*(1.0-rainStrength);
+}
+
 void skyGradient() {
     vec3 nFrag      = -normalize(screenSpacePos(depth.depth).xyz);
     vec3 hVec       = normalize(-vec.up+nFrag);
@@ -147,14 +162,14 @@ void skyGradient() {
 
     float horizonGrad = 1.0-max(hBottom, hTop);
 
-    float horizon   = linStep(horizonGrad, 0.15, 0.31);
+    float horizon   = linStep(horizonGrad, 0.12, 0.31);
         horizon     = pow5(horizon)*0.8;
 
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
 
     float horizonGlow = saturate(pow2(sunGrad));
-        horizonGlow = pow3(linStep(horizonGrad, 0.1-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
+        horizonGlow = pow3(linStep(horizonGrad, 0.08-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
         horizonGlow = pow2(horizonGlow*1.3);
         horizonGlow = saturate(horizonGlow*0.75);
 
@@ -165,17 +180,9 @@ void skyGradient() {
     float moonGlow  = pow(moonGrad*0.85, 15.0);
         moonGlow    = saturate(moonGlow*1.05)*0.8;
 
-    float sunLimb   = 1.0-linStep(hBottom, 0.68, 0.74);
-        sunLimb     = pow2(sunLimb);
-
     vec3 sunColor   = colSunglow*2;
     vec3 sunLight   = colSunlight;
     vec3 moonColor  = vec3(0.55, 0.75, 1.0)*0.1;
-
-    float sunAlbedo = sstep(sunGrad, 0.85, 0.95)*(1.0-timeMoon)*sunLimb;
-    float moonAlbedo = sstep(moonGrad, 0.85, 0.95)*timeNight;
-    
-    vec3 albedoCol  = sunAlbedo*normalize(sunLight)*50.0 + moonAlbedo*normalize(moonColor)*3.0;
 
     vec3 sky        = mix(colSky, colHorizon, horizonFade);
         sky         = mix(sky, colHorizon, horizon);
@@ -183,7 +190,19 @@ void skyGradient() {
         sky         = mix(sky, sunColor, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
         sky         = mix(sky, moonColor, moonGlow*timeNight);
 
+    float sunLimb   = 1.0-linStep(hBottom, 0.68, 0.74);
+        sunLimb     = pow2(sunLimb);
+
+    float sunAlbedo = sstep(sunGrad, 0.85, 0.95)*(1.0-timeMoon)*sunLimb;
+    float moonAlbedo = sstep(moonGrad, 0.85, 0.95)*timeNight;
+
+    vec3 sunDiscCol = colSunlight;
+    
+    vec3 albedoCol  = moonAlbedo*normalize(moonColor)*3.0;
+
         sky        += mix(vec3(vec3avg(scene.albedo)), scene.albedo, 0.3+(timeSunrise+timeSunset+timeNight)*0.7)*mix(albedoCol, vec3(vec3avg(albedoCol)*1.5), (timeSunrise+timeSunset+timeNight)*0.5);
+
+        sky        += getSunDisk(sunGrad, hBottom, sunDiscCol);
 
     returnCol       = sky*3;
 }
@@ -238,14 +257,14 @@ vec3 skyGradientC() {
 
     float horizonGrad = 1.0-max(hBottom, hTop);
 
-    float horizon   = linStep(horizonGrad, 0.15, 0.31);
+    float horizon   = linStep(horizonGrad, 0.12, 0.31);
         horizon     = pow5(horizon)*0.8;
 
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
 
     float horizonGlow = saturate(pow2(sunGrad));
-        horizonGlow = pow3(linStep(horizonGrad, 0.1-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
+        horizonGlow = pow3(linStep(horizonGrad, 0.08-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
         horizonGlow = pow2(horizonGlow*1.3);
         horizonGlow = saturate(horizonGlow*0.75);
 
@@ -256,13 +275,14 @@ vec3 skyGradientC() {
     float moonGlow  = pow(moonGrad*0.85, 15.0);
         moonGlow    = saturate(moonGlow*1.05)*0.8;
 
-    vec3 sunLight   = colSunglow*2;
+    vec3 sunColor   = colSunglow*2;
+    vec3 sunLight   = colSunlight;
     vec3 moonColor  = vec3(0.55, 0.75, 1.0)*0.1;
 
     vec3 sky        = mix(colSky, colHorizon, horizonFade);
         sky         = mix(sky, colHorizon, horizon);
         sky         = mix(sky, colHorizon, lowDome);
-        sky         = mix(sky, sunLight, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
+        sky         = mix(sky, sunColor, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
         sky         = mix(sky, moonColor, moonGlow*timeNight);
 
     return sky*3;
@@ -270,7 +290,7 @@ vec3 skyGradientC() {
 
 void simpleFog() {
     float falloff   = saturate(length(pos.world.xyz-pos.camera)/far);
-        falloff     = linStep(falloff, s_fogStart, 0.999);
+        falloff     = linStep(falloff, s_fogStart*(1.0-timeSunrise*0.5), 0.999);
         falloff     = pow(falloff, s_fogExp);
     
     vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;

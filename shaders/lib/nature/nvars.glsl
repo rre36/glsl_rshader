@@ -13,7 +13,7 @@ void nature() {
         sunlightSunrise.r = 1.0;
         sunlightSunrise.g = 0.48;
         sunlightSunrise.b = 0.0;
-        sunlightSunrise *= 0.6;
+        sunlightSunrise *= 0.8;
 
     vec3 sunlightNoon;
         sunlightNoon.r = 1.0;
@@ -74,7 +74,7 @@ void nature() {
         skyNoon.r = 0.0;
         skyNoon.g = 0.53;
         skyNoon.b = 1.0;
-        skyNoon *= 0.60;
+        skyNoon *= 0.5;
 
     vec3 skySunset;
         skySunset.r = 0.1;
@@ -98,8 +98,8 @@ void nature() {
         horizonSunrise *= 0.9;
 
     vec3 horizonNoon;
-        horizonNoon.r = 0.42;
-        horizonNoon.g = 0.76;
+        horizonNoon.r = 0.37;
+        horizonNoon.g = 0.71;
         horizonNoon.b = 1.00;
         horizonNoon *= 1.4;
 
