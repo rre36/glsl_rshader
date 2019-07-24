@@ -130,7 +130,7 @@ vec3 unpackNormal(vec3 x) {
 }
 
 vec3 getSunDisk(in float sunGrad, in float hBottom, in vec3 sunDiscCol) {
-    float sunDisc   = linStep(sunGrad, 1.0-(0.022+0.006), 1.0-(0.022));
+    float sunDisc   = linStep(sunGrad, 1.0-(0.02+0.006), 1.0-(0.02));
         sunDisc     = pow2(sunDisc);
 
     float sunLimb   = linStep(hBottom, 0.58, 0.70);
@@ -175,7 +175,7 @@ void skyGradient() {
 
     float sunGlow   = linStep(sunGrad, 0.5, 0.98);
         sunGlow     = pow5(sunGlow);
-        sunGlow    *= 1.0-timeNoon*0.8;
+        sunGlow    *= 1.0-timeNoon*0.5;
 
     float moonGlow  = pow(moonGrad*0.85, 15.0);
         moonGlow    = saturate(moonGlow*1.05)*0.8;
@@ -298,6 +298,89 @@ void simpleFog() {
     returnCol       = mix(returnCol, skyCol, falloff);
 }
 
+#include "/lib/nature/phase.glsl"
+
+float c_miePhase(float x) {
+    float mie1  = mie(x, 0.8*0.8);
+    float mie2  = mie(x, -0.5*0.8);
+    return mix(mie2, mie1, 0.75);
+}
+float scatterIntegral(float transmittance, const float coeff) {
+    float a   = -1.0/coeff;
+    return transmittance * a - a;
+}
+
+const float vc_altitude     = s_vcAltitude;
+const float vc_thickness    = s_vcThickness;
+const float vc_lowEdge      = vc_altitude-vc_thickness/2;
+const float vc_highEdge     = vc_altitude+vc_thickness/2;
+
+#include "/lib/nature/pcloud.glsl"
+
+void pcloud() {
+    const int samples       = s_vcSamples;
+
+    vec3 wPos   = worldSpacePos(depth.depth).xyz;
+    vec3 wVec   = normalize(wPos-pos.camera.xyz);
+
+    float height        = vc_altitude;
+
+    vec3 lightColor     = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
+        lightColor     *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), timeSunrise+timeSunset*0.7);
+    vec3 rayleighColor  = colSky*1.5;
+
+    float cloud         = 0.0;
+    float shading       = 1.0;
+    float scatter       = 0.0;
+    float distanceFade  = 1.0;
+    float fadeFactor    = 1.0;
+    const float transmittance = 1.0;
+
+    float vDotL         = dot(vec.view, vec.light);
+
+    bool isCloudVisible = false;
+
+    if (!mask.terrain) {
+        isCloudVisible = (wPos.y>=pos.camera.y && pos.camera.y<=height) || 
+        (wPos.y<=pos.camera.y && pos.camera.y>=height);
+    } else if (mask.terrain) {
+        isCloudVisible = (wPos.y>=height && pos.camera.y<=height) || 
+        (wPos.y<=height && pos.camera.y>=height);
+    }
+
+    if (isCloudVisible) {
+        vec3 getPlane   = wVec*((height-pos.camera.y)/wVec.y);
+        vec3 stepPos    = pos.camera.xyz+getPlane;
+
+        float dist = length(stepPos-pos.camera);
+
+        float fade      = linStep(dist, 1000.0, 7000.0);
+
+        if ((1.0-fade)>0.01) {
+            float oD        = vc_shape(stepPos);
+
+            if (oD>0.0) {
+                float stepTransmittance = exp2(-oD*1.11*invLog2);
+
+                cloud          += oD;
+
+                #if s_vcLightingQuality==0
+                    vc_scatter(scatter, oD, stepPos, 1.0, vDotL, transmittance, stepTransmittance);
+                #elif s_vcLightingQuality==1
+                    vc_multiscatter(scatter, oD, stepPos, 1.0, vDotL, transmittance, stepTransmittance);
+                #endif
+
+                fadeFactor     -= (fade);
+            }
+        }
+    }
+
+    vec3 color          = mix(rayleighColor, lightColor, saturate(scatter));
+
+    cloud               = saturate(cloud*pow2(fadeFactor));
+    returnCol           = mix(returnCol, color, cloud);
+}
+
 void main() {
     scene.albedo    = texture(colortex0, coord).rgb;
     scene.normal    = unpackNormal(texture(colortex1, coord).rgb);
@@ -328,6 +411,9 @@ void main() {
     if(!mask.terrain) {
         skyGradient();
         skyStars();
+        #if s_cloudMode==0
+            pcloud();
+        #endif
     }
 
     #ifdef setFog

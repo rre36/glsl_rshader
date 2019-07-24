@@ -253,7 +253,7 @@ const float vc_highEdge     = vc_altitude+vc_thickness/2;
 #include "/lib/nature/vcloud.glsl"
 
 void vcloud() {
-    const int samples       = 12;
+    const int samples       = s_vcSamples;
     const float lowEdge     = vc_lowEdge;
     const float highEdge    = vc_highEdge;
 
@@ -335,8 +335,8 @@ void vcloud() {
     }
     vec3 color          = mix(rayleighColor, lightColor, saturate(scatter));
 
-    cloud               = saturate(cloud);
-    returnCol           = mix(returnCol, color, pow2(cloud)*saturate(pow2(fadeFactor)));
+    cloud               = saturate(cloud*fadeFactor);
+    returnCol           = mix(returnCol, color, pow2(cloud));
 }
 
 void main() {
@@ -378,7 +378,9 @@ void main() {
 
     bool water = pbr.roughness < 0.01;
 
-    vcloud();
+    #if s_cloudMode==1
+        vcloud();
+    #endif
 
     if (isEyeInWater==0 && (mask.terrain || translucency)) {
         if (water) underwaterFog();

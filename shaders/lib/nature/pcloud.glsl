@@ -27,11 +27,8 @@ float vc_shape(in vec3 pos) {
         shape  += (1.0-abs(noise3D(pos0)*3.0-1.0))*0.2;
         pos0 *= 4.0; pos0.x -= tick*0.05;
         shape  += (1.0-abs(noise3D(pos0)*3.0-1.0))*0.075;
-
-        #if s_vcDetail>=1
-            pos0 *= 4.0; pos0.x -= tick*0.03;
-            shape  += (1.0-abs(noise3D(pos0)*3.0-1.0))*0.025;
-        #endif
+        pos0 *= 4.0; pos0.x -= tick*0.03;
+        shape  += (1.0-abs(noise3D(pos0)*3.0-1.0))*0.025;
 
     float lowFade   = sstep(pos.y, vc_lowEdge, vc_lowEdge+vc_thickness*0.08);
     float highFade  = 1.0-sstep(pos.y, vc_highEdge-vc_thickness*0.1, vc_highEdge);
@@ -44,7 +41,7 @@ float vc_shape(in vec3 pos) {
         shape      -= highCov*0.4;
         shape      *= lowFade*highFade;
 
-    const float coverage    = 0.4*s_vcCoverage;
+    const float coverage    = 0.5*s_vcCoverage;
     const float density     = 0.82*((s_vcDensity-1.0)*0.1+1.0);
         shape       = max(shape-(1.0-coverage), 0.0)/(1.0-density);
 
@@ -52,12 +49,12 @@ float vc_shape(in vec3 pos) {
 }
 
 float vc_lD(in vec3 rPos, const int steps) {
-    float density       = 0.15;
+    float density       = 0.075;
 
-    float stepSizeMod   = 1.0-(linStep(rPos.y, vc_lowEdge, vc_highEdge)*0.97)*(timeNoon);
+    float stepSizeMod   = 1.0-(linStep(rPos.y, vc_lowEdge, vc_highEdge)*0.9)*(timeNoon);
     vec3 dir            = mix(vec.light, vec.up, timeLightTransition);
         dir             = normalize(mat3(gbufferModelViewInverse)*dir);
-    float stepSize      = (vc_thickness/steps)*stepSizeMod;
+    float stepSize      = (vc_thickness/steps)*stepSizeMod*0.5;
     vec3 rayStep        = dir*stepSize;
 
     rPos           += rayStep;
@@ -82,7 +79,7 @@ float vc_getScatter(in float oD, in float lD, in float powder, in float phaseMod
 }
 
 void vc_scatter(inout float scatter, in float oD, in vec3 rayPos, in float scatterCoeff, in float vDotL, in float transmittance, in float stepTransmittance) {
-    float lD            = vc_lD(rayPos, 4)*0.3;
+    float lD            = vc_lD(rayPos, 3)*0.4;
     float powder        = 1.0-exp2(-oD*2.0);
         powder          = mix(powder, 1.0, vDotL*0.4+0.6);
     float scatterInt    = scatterIntegral(stepTransmittance, 1.11);
@@ -95,7 +92,7 @@ void vc_scatter(inout float scatter, in float oD, in vec3 rayPos, in float scatt
 
 void vc_multiscatter(inout float scatter, in float oD, in vec3 rayPos, in float scatterCoeff, in float vDotL, in float transmittance, in float stepTransmittance) {
     float tempScatter   = 0.0;
-    float lD            = vc_lD(rayPos, 5)*1.1;
+    float lD            = vc_lD(rayPos, 4)*1.1;
     float powder        = 1.0-exp2(-oD*2.0);
         powder          = mix(powder, 1.0, vDotL*0.4+0.6);
     float scatterInt    = scatterIntegral(stepTransmittance, 1.11);

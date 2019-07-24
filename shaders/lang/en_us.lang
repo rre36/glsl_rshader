@@ -12,19 +12,24 @@ value.setAOQuality.2=High
 
 screen.cloud=Clouds
 
+option.s_cloudMode=Clouds Mode
+value.s_cloudMode.0=2D
+value.s_cloudMode.1=Volumetric
 option.s_vcAltitude=Altitude
 option.s_vcSamples=Samples
+option.s_vcSamples.comment=Only affects volumetrics
 option.s_vcLightingQuality=Lighting Quality
 value.s_vcLightingQuality.0=Low
 value.s_vcLightingQuality.1=High
 option.s_vcAltitude=Altitude
 option.s_vcThickness=Thickness
+option.s_vcThickness.comment=Can also influence lighting on 2D clouds
 option.s_vcCoverage=Coverage
 option.s_vcDensity=Density
 option.s_vcDetail=Detail
-value.s_vcDetail.0=Medium
-value.s_vcDetail.1=High
-value.s_vcDetail.2=Ultra
+option.s_vcDetail.comment=Only affects volumetrics
+value.s_vcDetail.0=High
+value.s_vcDetail.1=Ultra
 
 option.setFog=Fog
 option.s_fogStart=Fog Start

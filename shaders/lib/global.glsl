@@ -5,13 +5,14 @@ const float shadowDistance      = 128.0;
 #define setAmbientOcclusion
 #define setAOQuality 0          //[0 1 2]
 
+#define s_cloudMode 1           //[0 1]
 #define s_vcSamples 10          //[4 6 8 10 12 14 16 18 20]
 #define s_vcLightingQuality 1   //[0 1]
 #define s_vcAltitude 350.0      //[200.0 225.0 250.0 275.0 300.0 325.0 350.0 375.0 400.0 425.0 450.0 500.0]
 #define s_vcThickness 175.0     //[100.0 125.0 150.0 175.0 200.0 225.0 250.0 275.0 300.0 325.0 350.0 375.0 400.0]
 #define s_vcCoverage 1.0        //[0.25 0.5 0.75 1.0 1.25 1.5 1.75 2.0]
 #define s_vcDensity 1.0         //[0.25 0.5 0.75 1.0 1.25 1.5 1.75 2.0]
-#define s_vcDetail 1            //[0 1]
+#define s_vcDetail 0            //[0 1]
 
 #define setFog
 #define s_fogStart 0.3          //[0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75]
