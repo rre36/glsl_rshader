@@ -14,6 +14,7 @@ const vec3 lightColor           = vec3(1.0, 0.26, 0.0);
 /* ------ uniforms ------ */
 
 uniform sampler2D tex;
+uniform sampler2D noisetex;
 
 uniform int frameCounter;
 
@@ -55,7 +56,15 @@ uniform mat4 shadowProjectionInverse;
 in vec4 col;
 in vec2 coord;
 in vec2 lmap;
+
+in vec3 wpos;
+
+in float vertexDist;
+in vec3 vertexViewVec;
+
 flat in vec3 nrm;
+flat in vec3 tangent;
+flat in vec3 binormal;
 
 flat in vec3 sunVector;
 flat in vec3 moonVector;
@@ -173,6 +182,7 @@ void diffuseLambert(in vec3 normal) {
 
 void specGGX(in vec3 normal) {
     float roughness = pow2(pbr.roughness);
+    if (water==1) roughness = 0.00002;
     float F0        = 0.08;
     if (pbr.metallic>0.5) {
         F0          = 0.2;
@@ -187,7 +197,7 @@ void specGGX(in vec3 normal) {
     float F         = F0 + (1.0 - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
     float k2        = 0.25 * roughness;
 
-    sdata.specular  = dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2)*pbr.specular;
+    sdata.specular  = dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2)*(water==1 ? 0.9 : pbr.specular);
     sdata.specular *= 1.0-rainStrength;
 }
 
@@ -339,6 +349,106 @@ void applyShading() {
     rdata.scene.rgb    += metalCol*pbr.metallic*sdata.result;
 }
 
+float noise2D(in vec2 coord) {
+    coord      /= 1024;
+    return texture2D(noisetex, coord).x*2.0-1.0;
+}
+
+float getWaterHeight(in vec3 wpos, const bool pom) {
+    float windAnim = -frameTimeCounter*1.5;
+    vec2 windTemp = vec2(windAnim, 0.0);
+    vec3 wind = vec3(windTemp.x, 0.5*windAnim, windTemp.y);
+
+    vec3 rpos = wpos;
+        rpos.y *= 0.2;
+
+        rpos += noise2D((rpos.xz+rpos.y)*0.1+windTemp*0.02);
+
+    float noise = noise2D(rpos.xz+rpos.y+windTemp);
+        rpos *= 2.0;
+        noise += noise2D(rpos.xz+rpos.y-windTemp)*0.5;
+        rpos *= 2.0;
+        noise += noise2D(rpos.xz+rpos.y+windTemp)*0.25;
+        rpos *= 2.0;
+        noise += noise2D(rpos.xz+rpos.y-windTemp)*0.125;
+        rpos *= 2.0;
+        noise += noise2D(rpos.xz+rpos.y+windTemp)*0.0625;
+
+    float multi     = saturate((-dot(normalize(scene.normal), normalize(pos.screen)))*8.0)/sqrt(sqrt(max(vertexDist, 4.0)));
+
+    return noise*multi*0.75;
+}
+
+vec3 parallaxCoord(vec3 coord) {
+    vec3 fragPos    = pos.screen.xyz;
+    vec3 viewVec    = vertexViewVec;
+    vec3 rpos       = coord;
+    const int samples = 6;
+    const float weight = (1.0/samples)*0.5;
+    //const float depth = weight;
+    float distanceFade = length(pos.world-pos.camera);
+        distanceFade = 1.0-linStep(distanceFade, 64.0, 96.0);
+    float height    = (getWaterHeight(rpos, true))*weight*distanceFade;
+
+    if (distanceFade>0.001) {
+    for (int i = 0; i<samples; i++) {
+        rpos.xz += height*(viewVec.xy)/vertexDist;
+        height  = (getWaterHeight(rpos, true))*weight*distanceFade;
+    }
+    }
+    rpos.xz += height*(viewVec.xy)/vertexDist;
+    return rpos;
+}
+
+void getWaterNormal() {
+    vec3 nrmOffset[4] = vec3[4] ( 
+            vec3(-1.0, 0.0, 0.0),
+            vec3(1.0, 0.0, 0.0),
+            vec3(0.0, 0.0, 1.0),
+            vec3(0.0, 0.0, -1.0)
+        );
+
+    mat3 tbnMatrix = mat3(tangent.x, binormal.x, nrm.x,
+				tangent.y, binormal.y, nrm.y,
+				tangent.z, binormal.z, nrm.z);
+
+    float nrmSampleSize = 0.014;
+        nrmSampleSize += saturate(vertexDist/32.0-0.25)*0.25;
+
+    vec3 position   = parallaxCoord(wpos.xyz);
+    //vec3 position   = wpos.xyz;
+
+    float h0 = getWaterHeight(position, false);
+    float hL = getWaterHeight(position+vec3(nrmOffset[0]*nrmSampleSize), false);
+    float hR = getWaterHeight(position+vec3(nrmOffset[1]*nrmSampleSize), false);
+    float hU = getWaterHeight(position+vec3(nrmOffset[2]*nrmSampleSize), false);
+    float hD = getWaterHeight(position+vec3(nrmOffset[3]*nrmSampleSize), false);
+
+    vec3 wNormalNoise;
+        wNormalNoise.x  = -((hL-h0)+(h0-hR))/nrmSampleSize;
+        wNormalNoise.y  = -((hU-h0)+(h0-hD))/nrmSampleSize;
+        wNormalNoise.z  = 1.0-pow2(wNormalNoise.x)-pow2(wNormalNoise.y);
+
+    vec3 normal = wNormalNoise;
+
+    normal = mix(normal, vec3(0.0, 0.0, 1.0), 0.99);
+    normal = clamp(normalize(normal*tbnMatrix), -1.0, 1.0);
+
+    scene.normal = normal;
+}
+
+void customWaterColor() {
+    float baseFresnel = getFresnel(scene.normal, vec.view, 2, false);
+
+    float brightness  = s_waterLuma;
+
+    vec3 watercolor     = vec3(s_waterR, s_waterG, s_waterB)*brightness;
+    float opacity       = s_waterOpacity;
+
+    rdata.scene.rgb = watercolor;
+    rdata.scene.a   = opacity;
+}
+
 void main() {
 vec4 inputSample        = texture(tex, coord);
     inputSample.rgb    *= col.rgb;
@@ -354,6 +464,7 @@ vec4 inputSample        = texture(tex, coord);
     pbr.metallic        = 0.0;
 
     rdata.scene.rgb     = scene.albedo;
+    rdata.scene.a       = inputSample.a;
     rdata.lmap          = lmap;
     rdata.materials     = 0.0;
     rdata.metalness     = pbr.metallic;
@@ -378,8 +489,8 @@ vec4 inputSample        = texture(tex, coord);
     pos.light       = shadowLightPosition;
     pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.screen      = screenSpacePos(depth.depth, gl_FragCoord.xy/vec2(viewWidth, viewHeight));
+    pos.world       = wpos.xyz;
 
     vec.sun         = sunVector;
     vec.moon        = moonVector;
@@ -392,6 +503,11 @@ vec4 inputSample        = texture(tex, coord);
     light.sky       = colSkylight*skylightLuma;
     light.sky       = mix(light.sky, vec3(vec3avg(light.sky))*0.4, rainStrength*0.95);
     light.artificial = lightColor*lightLuma;
+
+    if (water==1) {
+        getWaterNormal();
+        customWaterColor();
+    }
 
     diffuseLambert(scene.normal);
 
@@ -407,14 +523,15 @@ vec4 inputSample        = texture(tex, coord);
 
     applyShading();
 
-    rdata.scene.a       = water == 1 ? pow2(inputSample.a) : inputSample.a;
+    if (water==0) rdata.scene.a = pow2(inputSample.a);
+    //rdata.scene.a = mix(rdata.scene.a, 1.0, saturate(sdata.specular));
 
     //rdata.scene.rgb     = vec3(sdata.direct);
     //rdata.scene.a       = 1.0;
 
     /*DRAWBUFFERS:612*/
-    gl_FragData[0] = makeSceneOutput(rdata.scene)*vec4(vec3(0.1), 1.0);
-    gl_FragData[1] = toVec4(nrm*0.5+0.5);
+    gl_FragData[0] = makeSceneOutput(rdata.scene)*vec4(vec3(0.02), 1.0);
+    gl_FragData[1] = toVec4(scene.normal*0.5+0.5);
     gl_FragData[2] = vec4(rdata.lmap, encodeV2(rdata.specular, rdata.roughness), 1.0);
     //gl_FragData[3] = vec4(0.25, rdata.materials, 0.0, 1.0);
     //gl_FragData[4] = vec4(vec3(0.0), col.a);

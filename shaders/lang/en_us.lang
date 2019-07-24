@@ -54,3 +54,10 @@ value.expMethod.0=Temporal
 value.expMethod.1=Image Based
 value.expMethod.2=Legacy
 value.expMethod.3=Dummy (don't use)
+
+option.s_ssr=Screenspace Reflections
+
+option.s_ssrQuality=SSR Quality
+value.s_ssrQuality.0=Low
+value.s_ssrQuality.1=High
+value.s_ssrQuality.2=Ultra

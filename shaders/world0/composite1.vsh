@@ -1,2 +1,4 @@
 #version 400 compatibility
-#include "/post_simple.vsh"
+#define doVectors
+#define doNvars
+#include "/post_complex.vsh"

@@ -231,7 +231,7 @@ void underwaterFog() {
 }
 
 void applyTranslucents() {
-    vec4 translucents   = texture(colortex6, coord)*vec4(vec3(10.0), 1.0);
+    vec4 translucents   = texture(colortex6, coord)*vec4(vec3(50.0), 1.0);
     returnCol       = mix(returnCol, translucents.rgb, translucents.a);
 }
 

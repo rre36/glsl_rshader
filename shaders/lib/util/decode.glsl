@@ -6,7 +6,7 @@ float unmap(in float x, float low, float high) {
     x = clamp(x, 0.0, 1.0);
     return x;
 }
-vec3 decodeColor(float a){
+vec3 decodeV3(float a){
     int bf = int(a*65535.);
     return vec3(bf%32, (bf>>5)%64, bf>>11) / vec3(31,63,31);
 }

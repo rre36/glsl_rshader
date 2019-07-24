@@ -166,14 +166,16 @@ void applyShading() {
 
     vec3 metalCol       = scene.albedo*normalize(scene.albedo);
 
-    returnCol          *= 1.0-pbr.metallic;
+    float isMetal       = float(pbr.metallic>0.1);
+
+    returnCol          *= 1.0-isMetal;
 
     sdata.result        = directLight*sdata.ao;
     returnCol          *= sdata.result;
-    vec3 specular       = sdata.specular*light.sun*sdata.direct*mix(vec3(1.0), metalCol, saturate(pbr.metallic*10.0));
+    vec3 specular       = sdata.specular*light.sun*sdata.direct*mix(vec3(1.0), metalCol, isMetal);
     returnCol          += specular*sdata.color;
 
-    returnCol          += metalCol*pbr.metallic*sdata.result;
+    returnCol          += metalCol*isMetal*sdata.result;
 }
 
 void main() {
@@ -223,7 +225,7 @@ void main() {
         sdata.direct    = sample5.r;
         sdata.specular  = sample5.g*8.0;
 
-        sdata.color     = decodeColor(scene.sample3.a);
+        sdata.color     = decodeV3(scene.sample3.a);
 
         vec4 sample4    = texture(colortex4, coord);
 

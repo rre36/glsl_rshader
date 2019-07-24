@@ -88,7 +88,7 @@ void getLabPbr() {
     #endif
 
     roughness       = pbr.roughness;
-    metalness       = float(int(texsample.g*255.0) >= 230);
+    metalness       = remapMetals(int(texsample.g*255.0));
     specularity     = pbr.f0;
 
     #if (defined s_useNormal && defined s_useTexAO)

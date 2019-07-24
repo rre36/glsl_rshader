@@ -8,6 +8,13 @@ const float pi = 3.14159265358979323846;
 #define projMAD(m, v) (diag3(m) * (v) + (m)[3].xyz)
 #define viewMAD(m, v) (mat3(m) * (v) + (m)[3].xyz)
 
+#define dotSelf(x) dot(x, x)
+#define fnorm(x) x*inversesqrt(dotSelf(x))
+#define finv(x) (1.0-x)
+
+#define sstep(x, low, high) smoothstep(low, high, x)
+#define saturate(x) clamp(x, 0.0, 1.0)
+
 const float invLog2 = 1.0/log(2.0);
 
 float pow2(float x) {
@@ -30,6 +37,10 @@ float pow8(float x) {
 }
 float pow10(float x) {
     return pow5(x)*pow5(x);
+}
+
+vec3 pow2(vec3 x) {
+    return x*x;
 }
 
 vec3 linCol(vec3 x) {
@@ -63,11 +74,8 @@ float smoothCubic(float x) {
     return pow2(x) * (3.0-2.0*x);
 }
 
-#define sstep(x, low, high) smoothstep(low, high, x)
-#define saturate(x) clamp(x, 0.0, 1.0)
-
 float linStep(float x, float low, float high) {
-    float t = saturateF((x-low)/(high-low));
+    float t = saturate((x-low)/(high-low));
     return t;
 }
 
@@ -106,6 +114,17 @@ float bLighten(float x, float blend) {
 vec3 bLighten(vec3 x, vec3 blend) {
 	return vec3(bLighten(x.r, blend.r), bLighten(x.g, blend.g), bLighten(x.b, blend.b));
 }
+
+float bScreen(float x, float blend) {
+	return 1.0-((1.0-x)*(1.0-x));
+}
+vec3 bScreen(vec3 x, vec3 blend) {
+	return vec3(bScreen(x.r,blend.r),bScreen(x.g,blend.g),bScreen(x.b,blend.b));
+}
+vec3 bScreen(vec3 x, vec3 blend, float alpha) {
+	return (bScreen(x, blend) * alpha + x * (1.0 - alpha));
+}
+
 vec3 colorSat(vec3 x, float alpha) {
     return mix(vec3(getLuma(x)), x, alpha);
 }
