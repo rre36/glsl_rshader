@@ -108,6 +108,16 @@ float getFresnel(vec3 n, vec3 v, int exp, bool invert) {
     if (exp == 0 || exp > 6) return 1.0;
 }
 
+vec2 rsi(vec3 position, vec3 direction, float radius) {   //from robobo1221
+	float PoD = dot(position, direction);
+	float radiusSquared = radius * radius;
+
+	float delta = PoD * PoD + radiusSquared - dot(position, position);
+	if (delta < 0.0) return vec2(-1.0);
+	      delta = sqrt(delta);
+	return -PoD + vec2(-delta, delta);
+}
+
 float bLighten(float x, float blend) {
 	return max(x, blend);
 }

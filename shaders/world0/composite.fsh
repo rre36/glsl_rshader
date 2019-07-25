@@ -31,6 +31,7 @@ uniform float viewWidth;
 uniform float viewHeight;
 uniform float rainStrength;
 uniform float wetness;
+uniform float eyeAltitude;
 
 uniform ivec2 eyeBrightnessSmooth;
 
@@ -252,6 +253,82 @@ const float vc_highEdge     = vc_altitude+vc_thickness/2;
 
 #include "/lib/nature/vcloud.glsl"
 
+void vcloud(inout vec3 scenecol) {
+    const int steps         = s_vcSamples;
+    const float density     = 0.022;
+    const float lowEdge     = vc_lowEdge;
+    const float highEdge    = vc_highEdge;
+
+    vec3 wvec       = mat3(gbufferModelViewInverse)*vec.view;
+    vec2 psphere    = rsi((planetRadius+eyeAltitude)*vec.up, vec.view, planetRadius);
+    bool visible    = !((eyeAltitude<lowEdge && psphere.y>0.0) || (eyeAltitude>highEdge && wvec.y>0.0));
+
+    if (visible && !(mask.terrain && eyeAltitude<lowEdge)) {
+        vec2 bsphere    = rsi(vec3(0.0, 1.0, 0.0)*planetRadius+eyeAltitude, wvec, planetRadius+lowEdge);
+        vec2 tsphere    = rsi(vec3(0.0, 1.0, 0.0)*planetRadius+eyeAltitude, wvec, planetRadius+highEdge);
+    
+        float startdist = eyeAltitude>highEdge ? tsphere.x : bsphere.y;
+        float enddist   = eyeAltitude>highEdge ? bsphere.x : tsphere.y;
+
+        vec3 startpos   = wvec*startdist;
+        vec3 endpos     = wvec*enddist;
+
+        float mrange    = (1.0-saturate((eyeAltitude-highEdge)*0.2)) * (1.0-saturate((lowEdge-eyeAltitude)*0.2));
+            mrange      = mix(1.0, mrange, float(!mask.terrain));
+
+        startpos        = mix(startpos, gbufferModelViewInverse[3].xyz, mrange);
+        endpos          = mix(endpos, (pos.world-pos.camera)*(!mask.terrain ? (highEdge/64.0) : 1.0), mrange);
+
+        startpos        = planetCurvePosition(startpos);
+        endpos          = planetCurvePosition(endpos);
+
+        float dither    = ditherDynamic;
+
+        vec3 rstep      = (endpos-startpos)/steps;
+        vec3 rpos       = rstep*dither + startpos + pos.camera;
+
+        float rlength   = length(rstep);
+
+        float scatter   = 0.0;
+        float transmittance = 1.0;
+        float cloud     = 0.0;
+        float fade      = 1.0;
+        float vDotL     = light.vDotL;
+
+        vec3 sunlight   = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
+            sunlight   *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), timeSunrise+timeSunset*0.7);
+        vec3 skylight   = colSky*1.5;
+
+        for (int i = 0; i<steps; ++i, rpos += rstep) {
+            float dist  = length(rpos-pos.camera);
+            float dfade = linStep(dist, 1000.0, 7000.0);
+            if (finv(dfade)<0.01) continue;
+            
+            float oD    = vc_shape(rpos)*rlength*density;
+            if (oD <= 0.0) continue;
+
+            cloud      += oD;
+            float stepT = exp2(-oD*1.11*invLog2);
+
+            fade       -= dfade*transmittance;
+
+            #if s_vcLightingQuality==0
+                vc_scatter(scatter, oD, rpos, 1.0, vDotL, transmittance, stepT);
+            #elif s_vcLightingQuality==1
+                vc_multiscatter(scatter, oD, rpos, 1.0, vDotL, transmittance, stepT);
+            #endif
+
+            transmittance *= stepT;
+        }
+
+
+        vec3 color  = mix(skylight, sunlight, scatter);
+        cloud               = saturate(cloud);
+        scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
+    }
+}
+
+/*
 void vcloud() {
     const int samples       = s_vcSamples;
     const float lowEdge     = vc_lowEdge;
@@ -337,7 +414,7 @@ void vcloud() {
 
     cloud               = saturate(cloud*fadeFactor);
     returnCol           = mix(returnCol, color, pow2(cloud));
-}
+}*/
 
 void main() {
     scene.albedo    = texture(colortex0, coord).rgb;
@@ -379,7 +456,7 @@ void main() {
     bool water = pbr.roughness < 0.01;
 
     #if s_cloudMode==1
-        vcloud();
+        vcloud(returnCol);
     #endif
 
     if (isEyeInWater==0 && (mask.terrain || translucency)) {

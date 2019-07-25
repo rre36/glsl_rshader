@@ -33,6 +33,7 @@ uniform float viewWidth;
 uniform float viewHeight;
 uniform float rainStrength;
 uniform float wetness;
+uniform float eyeAltitude;
 
 uniform ivec2 eyeBrightnessSmooth;
 
@@ -343,6 +344,75 @@ void reflect_cloud(inout vec3 scene) {
 }
 #elif s_cloudMode==1
 #include "/lib/nature/vcloud.glsl"
+void reflect_cloud(inout vec3 scenecol) {
+    const int steps         = 8;
+    const float density     = 0.032;
+    const float lowEdge     = vc_lowEdge;
+    const float highEdge    = vc_highEdge;
+
+    /* --- calculate spheres --- */
+    vec3 wvec       = mat3(gbufferModelViewInverse)*rvec.view;
+    vec2 psphere    = rsi((planetRadius+eyeAltitude)*vec.up, rvec.view, planetRadius);
+    bool visible    = !((eyeAltitude<lowEdge && psphere.y>0.0) || (eyeAltitude>highEdge && wvec.y>0.0));
+
+    if (visible && mask.terrain) {
+        vec2 bsphere    = rsi(vec3(0.0, 1.0, 0.0)*planetRadius+eyeAltitude, wvec, planetRadius+lowEdge);
+        vec2 tsphere    = rsi(vec3(0.0, 1.0, 0.0)*planetRadius+eyeAltitude, wvec, planetRadius+highEdge);
+    
+        float startdist = eyeAltitude>highEdge ? tsphere.x : bsphere.y;
+        float enddist   = eyeAltitude>highEdge ? bsphere.x : tsphere.y;
+
+        vec3 startpos   = wvec*startdist;
+        vec3 endpos     = wvec*enddist;
+
+        startpos        = planetCurvePosition(startpos);
+        endpos          = planetCurvePosition(endpos);
+
+        float dither    = ditherDynamic;
+
+        vec3 rstep      = (endpos-startpos)/steps;
+        vec3 rpos       = rstep*dither + startpos + pos.camera;
+
+        float rlength   = length(rstep);
+
+        float scatter   = 0.0;
+        float transmittance = 1.0;
+        float cloud     = 0.0;
+        float fade      = 1.0;
+        float vDotL     = dot(vec.view, vec.light);
+
+        vec3 sunlight   = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
+            sunlight   *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), timeSunrise+timeSunset*0.7);
+        vec3 skylight   = colSky*1.5;
+
+        for (int i = 0; i<steps; ++i, rpos += rstep) {
+            float dist  = length(rpos-pos.camera);
+            float dfade = linStep(dist, 1000.0, 7000.0);
+            if (finv(dfade)<0.01) continue;
+            
+            float oD    = vc_shape(rpos)*rlength*density;
+            if (oD <= 0.0) continue;
+
+            cloud      += oD;
+            float stepT = exp2(-oD*1.11*invLog2);
+
+            fade       -= dfade*transmittance;
+
+            #if s_vcLightingQuality==0
+                vc_scatter(scatter, oD, rpos, 1.0, vDotL, transmittance, stepT);
+            #elif s_vcLightingQuality==1
+                vc_multiscatter(scatter, oD, rpos, 1.0, vDotL, transmittance, stepT);
+            #endif
+
+            transmittance *= stepT;
+        }
+
+        vec3 color  = mix(skylight, sunlight, saturate(scatter));
+        cloud               = saturate(cloud);
+        scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
+    }
+}
+/*
 void reflect_cloud(inout vec3 scene) {
     const int samples       = 8;
     const float lowEdge     = vc_lowEdge;
@@ -424,7 +494,7 @@ void reflect_cloud(inout vec3 scene) {
 
     cloud               = saturate(cloud*fadeFactor);
     scene               = mix(scene, color*2.0, pow2(cloud));
-}
+}*/
 #endif
 
 void main() {
