@@ -6,7 +6,7 @@
 const float shadowIllumination  = 0.0;
 const float sunlightLuma        = 5.5;
 const float skylightLuma        = 0.1;
-const float minLight            = 0.01;
+const float minLight            = 0.007;
 const vec3 minLightColor        = vec3(0.8, 0.9, 1.0);
 const float lightLuma           = 2.0;
 const vec3 lightColor           = vec3(1.0, 0.26, 0.0);
@@ -243,7 +243,11 @@ void main() {
     }
 
     //returnCol   = light.sun;
-
+/*
+    #ifdef MC_GL_RENDERER_GEFORCE
+        returnCol += 1.0/255.0;
+    #endif
+*/
     /*DRAWBUFFERS:03*/
     gl_FragData[0]  = makeSceneOutput(returnCol);
     gl_FragData[1]  = vec4(scene.sample3.r, encodeV3(scene.albedo), scene.sample3.b, 1.0);

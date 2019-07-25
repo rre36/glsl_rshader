@@ -294,7 +294,11 @@ void simpleFog() {
         falloff     = pow(falloff, s_fogExp);
     
     vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;
-
+/*
+    #ifdef MC_GL_RENDERER_GEFORCE
+        skyCol += 1.0/255.0;
+    #endif
+*/
     returnCol       = mix(returnCol, skyCol, falloff);
 }
 
@@ -414,6 +418,10 @@ void main() {
         #if s_cloudMode==0
             pcloud();
         #endif
+/*
+        #ifdef MC_GL_RENDERER_GEFORCE
+            returnCol += 1.0/255.0;
+        #endif*/
     }
 
     #ifdef setFog

@@ -148,9 +148,11 @@ vec3 planetCurvePosition(in vec3 x) {
     return vec3(x.x, length(x + vec3(0.0, planetRadius, 0.0))-planetRadius, x.z);
 }
 
+#define MC_GL_RENDERER_GEFORCE
+
 vec4 makeSceneOutput(in vec3 returnCol) {
     #ifdef MC_GL_RENDERER_GEFORCE
-        vec3 temp   = clamp(returnCol, 1.0/255.0, 65535.0);
+        vec3 temp   = clamp(returnCol, 1.0/65530.0, 65535.0);
     #else
         vec3 temp   = clamp(returnCol, 0.0, 65535.0);
     #endif
@@ -159,7 +161,7 @@ vec4 makeSceneOutput(in vec3 returnCol) {
 }
 vec4 makeSceneOutput(in vec4 returnCol) {
     #ifdef MC_GL_RENDERER_GEFORCE
-        vec3 temp   = clamp(returnCol.xyz, 1.0/255.0, 65535.0);
+        vec3 temp   = clamp(returnCol.xyz, 1.0/65530.0, 65535.0);
     #else
         vec3 temp   = clamp(returnCol.xyz, 0.0, 65535.0);
     #endif

@@ -193,7 +193,11 @@ void simpleFog() {
         falloff     = pow(falloff, s_fogExp);
     
     vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;
-
+/*
+    #ifdef MC_GL_RENDERER_GEFORCE
+        skyCol += 1.0/255.0;
+    #endif
+*/
     returnCol       = mix(returnCol, skyCol, falloff);
 }
 
@@ -323,6 +327,10 @@ void vcloud(inout vec3 scenecol) {
 
 
         vec3 color  = mix(skylight, sunlight, scatter);
+    /*#ifdef MC_GL_RENDERER_GEFORCE
+        color += 1.0/255.0;
+    #endif*/
+
         cloud               = saturate(cloud);
         scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
     }

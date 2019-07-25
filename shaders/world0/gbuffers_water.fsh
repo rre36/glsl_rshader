@@ -5,7 +5,7 @@
 const float shadowIllumination  = 0.0;
 const float sunlightLuma        = 5.5;
 const float skylightLuma        = 0.1;
-const float minLight            = 0.01;
+const float minLight            = 0.007;
 const vec3 minLightColor        = vec3(0.8, 0.9, 1.0);
 const float lightLuma           = 2.0;
 const vec3 lightColor           = vec3(1.0, 0.26, 0.0);
@@ -529,6 +529,10 @@ vec4 inputSample        = texture(tex, coord);
     //rdata.scene.rgb     = vec3(sdata.direct);
     //rdata.scene.a       = 1.0;
 
+      /*  #ifdef MC_GL_RENDERER_GEFORCE
+            rdata.scene.rgb += 1.0/255.0;
+        #endif
+*/
     /*DRAWBUFFERS:612*/
     gl_FragData[0] = makeSceneOutput(rdata.scene)*vec4(vec3(0.02), 1.0);
     gl_FragData[1] = toVec4(scene.normal*0.5+0.5);

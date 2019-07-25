@@ -136,6 +136,11 @@ void colorGrading() {
 
 void main() {
     scene.hdr       = textureLod(colortex0, coord, 0).rgb;
+
+/*    #ifdef MC_GL_RENDERER_GEFORCE
+        scene.hdr  -= 1.0/255.0;
+    #endif
+*/
     scene.sdr       = scene.hdr;
     scene.exposure  = 1.0;
 
