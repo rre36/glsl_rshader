@@ -306,15 +306,15 @@ void reflect_cloud(inout vec3 scene) {
     bool isCloudVisible = false;
 
     if (!mask.terrain) {
-        isCloudVisible = (wPos.y>=pos.camera.y && pos.camera.y<=height) || 
-        (wPos.y<=pos.camera.y && pos.camera.y>=height);
+        isCloudVisible = (wPos.y>=0 && 0<=height) || 
+        (wPos.y<=0 && 0>=height);
     } else if (mask.terrain) {
-        isCloudVisible = (wPos.y>=height && pos.camera.y<=height) || 
-        (wPos.y<=height && pos.camera.y>=height);
+        isCloudVisible = (wPos.y>=height && 0<=height) || 
+        (wPos.y<=height && 0>=height);
     }
 
     if (isCloudVisible) {
-        vec3 getPlane   = wVec*((height-pos.camera.y)/wVec.y);
+        vec3 getPlane   = wVec*((height-pos.world.y)/wVec.y);
         vec3 stepPos    = pos.camera.xyz+getPlane;
 
         float dist = length(stepPos-pos.camera);
@@ -382,20 +382,20 @@ void reflect_cloud(inout vec3 scene) {
 
     for (int i = 0; i<samples; i++) {
         if (!mask.terrain) {
-            isCloudVisible = (wPos.y>=pos.camera.y && pos.camera.y<=height) || 
-            (wPos.y<=pos.camera.y && pos.camera.y>=height);
+            isCloudVisible = (wPos.y>=0 && 0<=height) || 
+            (wPos.y<=0 && 0>=height);
         } else if (mask.terrain) {
-            isCloudVisible = (wPos.y>=height && pos.camera.y<=height) || 
-            (wPos.y<=height && pos.camera.y>=height);
+            isCloudVisible = (wPos.y>=height && 0<=height) || 
+            (wPos.y<=height && 0>=height);
         }
 
         if (isCloudVisible) {
-            vec3 getPlane   = wVec*((height-pos.camera.y)/wVec.y);
+            vec3 getPlane   = wVec*((height-pos.world.y)/wVec.y);
             vec3 stepPos    = pos.camera.xyz+getPlane;
 
             float dist = length(stepPos-pos.camera);
 
-            float fade      = linStep(dist, 1000.0, 7000.0);
+            float fade      = linStep(dist, 2000.0, 7000.0);
 
             if ((1.0-fade)>0.01) {
                 float oD        = vc_shape(stepPos);
@@ -483,7 +483,7 @@ void main() {
         float fresnel   = 1.0;
         vec3 metalFresnel = vec3(1.0);
 
-        if (water) fresnel = pow3(linStep(baseFresnel, 0.0, 0.25))*0.96+0.04;
+        if (water) fresnel = pow3(linStep(baseFresnel, 0.0, 0.25))*0.98+0.02;
         else fresnel = max(pow2(linStep(baseFresnel, 0.0, 0.25)), pbr.f0)*0.5;
 
         reflectCol   = ref.screen.rgb;
