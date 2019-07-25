@@ -501,8 +501,8 @@ void main() {
                 reflect_cloud(sky);
             #endif
 
-            reflectCol  = mix(sky, reflectCol, reflectAlpha)*lightmapFade;
-            reflectAlpha = 1.0*lightmapFade;
+            reflectCol  = mix(sky*lightmapFade, reflectCol, reflectAlpha);
+            reflectAlpha = max(1.0*lightmapFade, reflectAlpha);
         }
         #endif
 

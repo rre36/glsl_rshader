@@ -459,7 +459,7 @@ vec4 inputSample        = texture(tex, coord);
     depth.depth         = gl_FragCoord.z;
     depth.linear        = depthLin(depth.depth);
 
-    pbr.roughness       = water==1 ? 0.0 : 0.25;
+    pbr.roughness       = water==1 ? 0.0001 : 0.25;
     pbr.specular        = 0.5;
     pbr.metallic        = 0.0;
 
