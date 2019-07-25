@@ -345,8 +345,8 @@ void reflect_cloud(inout vec3 scene) {
 #elif s_cloudMode==1
 #include "/lib/nature/vcloud.glsl"
 void reflect_cloud(inout vec3 scenecol) {
-    const int steps         = 8;
-    const float density     = 0.032;
+    const int steps         = 6;
+    const float density     = 0.022;
     const float lowEdge     = vc_lowEdge;
     const float highEdge    = vc_highEdge;
 
