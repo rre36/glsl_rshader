@@ -327,102 +327,11 @@ void vcloud(inout vec3 scenecol) {
 
 
         vec3 color  = mix(skylight, sunlight, scatter);
-    /*#ifdef MC_GL_RENDERER_GEFORCE
-        color += 1.0/255.0;
-    #endif*/
 
         cloud               = saturate(cloud);
         scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
     }
 }
-
-/*
-void vcloud() {
-    const int samples       = s_vcSamples;
-    const float lowEdge     = vc_lowEdge;
-    const float highEdge    = vc_highEdge;
-
-    vec3 wPos   = worldSpacePos(depth.solid).xyz;
-    vec3 wVec   = normalize(wPos-pos.camera.xyz);
-
-    bool isCorrectStepDir = pos.camera.y<vc_altitude;
-
-    float heightStep    = vc_thickness/samples;
-    float height;
-    if (isCorrectStepDir) {
-            height      = lowEdge;
-            height     += heightStep*ditherDynamic;
-    } else {
-            height      = highEdge;
-            height     -= heightStep*ditherDynamic;
-    }
-
-    vec3 lightColor     = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
-        lightColor     *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), timeSunrise+timeSunset*0.7);
-    vec3 rayleighColor  = colSky*1.5;
-
-    float cloud         = 0.0;
-    float shading       = 1.0;
-    float scatter       = 0.0;
-    float distanceFade  = 1.0;
-    float fadeFactor     = 1.0;
-    float transmittance = 1.0;
-
-    float weight        = 12.0/samples;
-
-    float vDotL         = dot(vec.view, vec.light);
-
-    bool isCloudVisible = false;
-
-    for (int i = 0; i<samples; i++) {
-        if (!mask.terrain) {
-            isCloudVisible = (wPos.y>=pos.camera.y && pos.camera.y<=height) || 
-            (wPos.y<=pos.camera.y && pos.camera.y>=height);
-        } else if (mask.terrain) {
-            isCloudVisible = (wPos.y>=height && pos.camera.y<=height) || 
-            (wPos.y<=height && pos.camera.y>=height);
-        }
-
-        if (isCloudVisible) {
-            vec3 getPlane   = wVec*((height-pos.camera.y)/wVec.y);
-            vec3 stepPos    = pos.camera.xyz+getPlane;
-
-            float dist = length(stepPos-pos.camera);
-
-            float fade      = linStep(dist, 1000.0, 7000.0);
-
-            if ((1.0-fade)>0.01) {
-                float oD        = vc_shape(stepPos);
-
-                if (oD>0.0) {
-                    float stepTransmittance = exp2(-oD*1.11*invLog2);
-
-                    cloud          += oD*weight;
-
-                    #if s_vcLightingQuality==0
-                        vc_scatter(scatter, oD, stepPos, 1.0, vDotL, transmittance, stepTransmittance);
-                    #elif s_vcLightingQuality==1
-                        vc_multiscatter(scatter, oD, stepPos, 1.0, vDotL, transmittance, stepTransmittance);
-                    #endif
-
-                    fadeFactor     -= (fade)*transmittance;
-
-                    transmittance  *= stepTransmittance;
-                }
-            }
-        }
-
-        if (isCorrectStepDir) {
-            height         += heightStep;
-        } else {
-            height         -= heightStep; 
-        }
-    }
-    vec3 color          = mix(rayleighColor, lightColor, saturate(scatter));
-
-    cloud               = saturate(cloud*fadeFactor);
-    returnCol           = mix(returnCol, color, pow2(cloud));
-}*/
 
 void main() {
     scene.albedo    = texture(colortex0, coord).rgb;

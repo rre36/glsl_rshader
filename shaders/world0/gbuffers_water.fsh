@@ -523,16 +523,12 @@ vec4 inputSample        = texture(tex, coord);
 
     applyShading();
 
-    if (water==0) rdata.scene.a = pow2(inputSample.a);
+    if (water==0) rdata.scene.a = inputSample.a;
     //rdata.scene.a = mix(rdata.scene.a, 1.0, saturate(sdata.specular));
 
     //rdata.scene.rgb     = vec3(sdata.direct);
     //rdata.scene.a       = 1.0;
 
-      /*  #ifdef MC_GL_RENDERER_GEFORCE
-            rdata.scene.rgb += 1.0/255.0;
-        #endif
-*/
     /*DRAWBUFFERS:612*/
     gl_FragData[0] = makeSceneOutput(rdata.scene)*vec4(vec3(0.02), 1.0);
     gl_FragData[1] = toVec4(scene.normal*0.5+0.5);

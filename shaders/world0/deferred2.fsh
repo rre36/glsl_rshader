@@ -243,11 +243,6 @@ void main() {
     }
 
     //returnCol   = light.sun;
-/*
-    #ifdef MC_GL_RENDERER_GEFORCE
-        returnCol += 1.0/255.0;
-    #endif
-*/
     /*DRAWBUFFERS:03*/
     gl_FragData[0]  = makeSceneOutput(returnCol);
     gl_FragData[1]  = vec4(scene.sample3.r, encodeV3(scene.albedo), scene.sample3.b, 1.0);
