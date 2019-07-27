@@ -171,6 +171,7 @@ void main() {
         skyGradient();
     }
 
-    /*DRAWBUFFERS:0*/
+    /*DRAWBUFFERS:06*/
     gl_FragData[0]  = makeSceneOutput(returnCol);
+    gl_FragData[1]  = vec4(0.0);
 }
