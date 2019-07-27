@@ -346,7 +346,7 @@ void main() {
     }
 
     rdata.directLight   = sdata.lit;
-    rdata.ao            = sdata.ao*sdata.vanillaAo;
+    rdata.ao            = sdata.ao*pow2(sdata.vanillaAo);
     rdata.indirect      = sdata.gi*0.3;
     rdata.specular      = sdata.specular;
     rdata.shadowColor   = saturate(sdata.shadowcolor);

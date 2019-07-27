@@ -1,5 +1,5 @@
-option.INFO=Shader by RRe36
-value.INFO.0=dev
+option.INFO=RRe36's Shader
+value.INFO.0=v10.0
 
 option.shadowMapResolution=Shadow Resolution
 option.s_shadowLuminance=Shadow Illumination
@@ -37,6 +37,7 @@ option.s_fogExp=Fog Exponent
 
 option.setBloom=Bloom
 option.setMotionblur=Motionblur
+option.mBlurSamples=Motionblur Samples
 option.temporalAA=Temporal AA
 option.setWindEffect=Wind Effects
 
