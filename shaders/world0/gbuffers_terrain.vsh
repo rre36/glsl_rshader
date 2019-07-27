@@ -5,6 +5,8 @@
 out vec4 col;
 out vec2 coord;
 out vec2 lmap;
+out vec3 wpos;
+flat out vec3 upVec;
 flat out vec3 nrm;
 
 flat out vec3 tangent;
@@ -14,6 +16,7 @@ flat out int beacon;
 uniform int frameCounter;
 uniform float viewWidth;
 uniform float viewHeight;
+uniform vec3 upPosition;
 
 vec4 position;
 
@@ -43,6 +46,7 @@ void main() {
     #ifdef setWindEffect
         applyWind();
     #endif
+    wpos = position.xyz;
     repackPos();
 
     #ifdef temporalAA
@@ -52,6 +56,7 @@ void main() {
     col             = gl_Color;
     coord           = (gl_TextureMatrix[0]*gl_MultiTexCoord0).xy;
     nrm             = normalize(gl_NormalMatrix*gl_Normal);
+    upVec           = normalize(upPosition);
 
     tangent = vec3(0.0);
 	binormal = vec3(0.0);

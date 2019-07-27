@@ -80,7 +80,7 @@ void getLabPbr() {
     pbr.roughness   = 1.0-texsample.r;
     pbr.roughness   = max(pbr.roughness, 0.02);
     pbr.f0          = pow2(clamp(texsample.g, 0.0, 229.0/255.0));
-    pbr.porosity    = int(texsample.b*255.0)<65 ? integerLinStep(texsample.b, 0, 64) : 0.0;
+    pbr.porosity    = int(texsample.b*255.0)<65 ? linStep(texsample.b, 0, 64.0/255.0) : 0.0;
 
     #ifdef s_useTexEmission
         pbr.emission    = int(texsample.a*255.0)<255 ? texsample.a : 0.0;

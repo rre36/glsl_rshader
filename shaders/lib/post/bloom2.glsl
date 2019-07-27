@@ -10,7 +10,7 @@ void bloom() {
     vec3 blur6 = bloomExpand(texture(colortex4,coord.xy/pow(2.0,7.0) + vec2(0.3,0.3)).rgb)*0.5;
     vec3 blur7 = bloomExpand(texture(colortex4,coord.xy/pow(2.0,8.0) + vec2(0.4,0.3)).rgb)*0.25;
 	
-    vec3 blur = (blur1 + blur2 + blur3 + blur4 + blur5 + blur6 + blur7)*bloomIntensity;
+    vec3 blur = (blur1 + blur2 + blur3 + blur4 + blur5 + blur6 + blur7)*bloomIntensity*(1.0+rainStrength*0.5);
 
     returnCol += blur/7.0;
 }

@@ -40,10 +40,13 @@ option.setMotionblur=Motionblur
 option.temporalAA=Temporal AA
 option.setWindEffect=Wind Effects
 
+screen.Textures=Textures and World
+
 option.s_usePBR=Use Texture PBR
 option.s_usePBR.comment=Enable the use of the resourcepack pbr texture attributes. Only labPBR is supported atm.
 option.s_useTexAO=Use Texture AO
 option.s_useTexEmission=Use Texture Emission
+option.s_porosity=Porosity Approximation
 
 option.s_useNormal=Texture Normal
 option.setNormalFlatten=Flatten Normal
@@ -61,3 +64,5 @@ option.s_ssrQuality=SSR Quality
 value.s_ssrQuality.0=Low
 value.s_ssrQuality.1=High
 value.s_ssrQuality.2=Ultra
+
+option.s_rainPuddles=Rain Puddles

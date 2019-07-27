@@ -9,6 +9,7 @@ uniform sampler2D colortex4;
 
 uniform float viewHeight;
 uniform float viewWidth;
+uniform float rainStrength;
 
 in vec2 coord;
 

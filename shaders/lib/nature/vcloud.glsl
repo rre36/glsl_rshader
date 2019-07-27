@@ -44,8 +44,8 @@ float vc_shape(in vec3 pos) {
         shape      -= highCov*0.4;
         shape      *= lowFade*highFade;
 
-    const float coverage    = 0.4*s_vcCoverage;
-    const float density     = 0.82*((s_vcDensity-1.0)*0.1+1.0);
+    float coverage    = mix(0.4*s_vcCoverage, 0.8, wetness);
+    const float density = 0.82*((s_vcDensity-1.0)*0.1+1.0);
         shape       = max(shape-(1.0-coverage), 0.0)/(1.0-density);
 
     return max(shape, 0.0);

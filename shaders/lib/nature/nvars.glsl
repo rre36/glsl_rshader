@@ -8,6 +8,12 @@ flat out vec2 fogDensity;
 uniform vec3 skyColor;
 uniform vec3 fogColor;
 
+uniform float rainStrength;
+uniform float wetness;
+
+const float wetnessHalflife = 60.0;
+const float drynessHalflife = 150.0;
+
 void nature() {
     vec3 sunlightSunrise;
         sunlightSunrise.r = 1.0;
@@ -90,6 +96,7 @@ void nature() {
 
     colSky = skySunrise*timeSunrise + skyNoon*timeNoon + skySunset*timeSunset + skyNight*timeNight;
     colSky *= (1-timeMoon*0.7);
+    colSky = mix(colSky, vec3(vec3avg(colSky)), rainStrength*0.92);
 
     vec3 horizonSunrise;
         horizonSunrise.r = 1.0;
@@ -117,6 +124,7 @@ void nature() {
 
     colHorizon = horizonSunrise*timeSunrise + horizonNoon*timeNoon + horizonSunset*timeSunset + horizonNight*timeNight;
     colHorizon *= (1-timeMoon*0.89);
+    colHorizon = mix(colHorizon, vec3(vec3avg(colHorizon)), rainStrength*0.8);
 
     vec3 sunglowSunrise;
         sunglowSunrise.r = 1.0;
@@ -143,6 +151,7 @@ void nature() {
         sunglowNight *= 0.004;
 
     colSunglow = sunglowSunrise*timeSunrise + sunglowNoon*timeNoon + sunglowSunset*timeSunset + sunlightNight*timeNight;
+    colSunglow = mix(colSunglow, vec3(vec3avg(colSunglow)), rainStrength*0.5);
 
     fogDensity  = vec2(0.45, 2.0);
 }

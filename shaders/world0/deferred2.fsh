@@ -154,7 +154,7 @@ void applyShading() {
     sdata.lightmap      = sstep(scene.lightmap.y, 0.15, 0.95);
     sdata.cave          = 1.0-sstep(scene.lightmap.y, 0.2, 0.5);
 
-    vec3 indirectLight  = mix(sdata.skylight, light.sun, saturate(s_shadowLuminance));
+    vec3 indirectLight  = mix(sdata.skylight, light.sun, saturate(max(s_shadowLuminance, rainStrength*0.3)));
         indirectLight   = mix(indirectLight, minLightColor*minLight, sdata.cave);
 
         indirectLight  += light.sun*sdata.indirect*(1.0-sdata.direct);

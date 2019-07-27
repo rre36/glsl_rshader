@@ -120,6 +120,7 @@ struct lightData {
 
 vec3 returnCol  = vec3(0.0);
 bool translucency = false;
+float cloudAlpha = 0.0;
 
 
 /* ------ includes ------ */
@@ -237,6 +238,7 @@ void underwaterFog() {
 
 void applyTranslucents() {
     vec4 translucents   = texture(colortex6, coord)*vec4(vec3(50.0), 1.0);
+    if (eyeAltitude > (s_vcAltitude-s_vcThickness/2)) translucents.a *= 1.0-cloudAlpha;
     returnCol       = mix(returnCol, translucents.rgb, translucents.a);
 }
 
@@ -300,7 +302,7 @@ void vcloud(inout vec3 scenecol) {
         float vDotL     = light.vDotL;
 
         vec3 sunlight   = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
-            sunlight   *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), timeSunrise+timeSunset*0.7);
+            sunlight   *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), (timeSunrise+timeSunset*0.7)*(1.0-rainStrength));
         vec3 skylight   = colSky*1.5;
 
         for (int i = 0; i<steps; ++i, rpos += rstep) {
@@ -327,8 +329,8 @@ void vcloud(inout vec3 scenecol) {
 
 
         vec3 color  = mix(skylight, sunlight, scatter);
-
         cloud               = saturate(cloud);
+        cloudAlpha          = linStep(cloud, 0.0, 0.99);
         scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
     }
 }
@@ -375,6 +377,8 @@ void main() {
     #if s_cloudMode==1
         vcloud(returnCol);
     #endif
+
+    if (scene.sample3.r>0.75 && scene.sample3.r<0.95) returnCol *= 1.0-saturate(cloudAlpha)*0.9;
 
     if (isEyeInWater==0 && (mask.terrain || translucency)) {
         if (water) underwaterFog();

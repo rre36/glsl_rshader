@@ -257,7 +257,7 @@ vec3 reflectedSky() {
 
     vec3 sky        = mix(colSky, colHorizon, horizonFade);
         sky         = mix(sky, colHorizon, horizon);
-        sky         = mix(sky, colHorizon, lowDome);
+        sky         = mix(sky, colHorizon*0.1, lowDome);
         sky         = mix(sky, sunColor, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
         sky         = mix(sky, moonColor, moonGlow*timeNight);
 
@@ -455,6 +455,8 @@ void main() {
     float lightmapFade      = linStep(scene.lightmap.y, 0.66, 0.96);
         lightmapFade        = pow2(lightmapFade);
 
+    float glossyFade       = 1.0-linStep(pbr.roughness, 0.02, 0.1);
+
     if((mask.terrain || translucency) && roughnessFade>0.01 && isEyeInWater==0) {
         rvec.sun        = reflect(vec.sun, normalize(scene.normal));
         rvec.moon       = reflect(vec.moon, normalize(scene.normal));
@@ -481,15 +483,15 @@ void main() {
         int metals      = int(pbr.metallic*255.0);
 
         #ifdef s_skyReflection
-        if (water && reflectAlpha<1.0 && lightmapFade>0.0) {
+        if (reflectAlpha<1.0 && lightmapFade>0.0) {
             vec3 sky    = reflectedSky();
 
             #ifdef s_cloudReflection
-                reflect_cloud(sky);
+                if (water) reflect_cloud(sky);
             #endif
 
-            reflectCol  = mix(sky*lightmapFade, reflectCol, reflectAlpha);
-            reflectAlpha = max(1.0*lightmapFade, reflectAlpha);
+            reflectCol  = mix(sky*lightmapFade*glossyFade, reflectCol, reflectAlpha);
+            reflectAlpha = max(1.0*lightmapFade*glossyFade, reflectAlpha);
         }
         #endif
 
