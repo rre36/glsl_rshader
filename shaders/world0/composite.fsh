@@ -252,6 +252,80 @@ float scatterIntegral(float transmittance, const float coeff) {
     return transmittance * a - a;
 }
 
+#if s_cloudMode==0
+
+const float vc_altitude     = s_vcAltitude;
+const float vc_thickness    = s_vcThickness;
+const float vc_lowEdge      = vc_altitude-vc_thickness/2;
+const float vc_highEdge     = vc_altitude+vc_thickness/2;
+
+#include "/lib/nature/pcloud.glsl"
+
+void pcloud() {
+    vec3 wPos   = worldSpacePos(depth.depth).xyz;
+    vec3 wVec   = normalize(wPos-pos.camera.xyz);
+
+    float height        = vc_altitude;
+
+    vec3 lightColor     = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
+        lightColor     *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), timeSunrise+timeSunset*0.7);
+    vec3 rayleighColor  = colSky*1.5;
+
+    float cloud         = 0.0;
+    float shading       = 1.0;
+    float scatter       = 0.0;
+    float distanceFade  = 1.0;
+    float fadeFactor    = 1.0;
+    const float transmittance = 1.0;
+
+    float vDotL         = dot(vec.view, vec.light);
+
+    bool isCloudVisible = false;
+
+    if (!mask.terrain) {
+        isCloudVisible = (wPos.y>=pos.camera.y && pos.camera.y<=height) || 
+        (wPos.y<=pos.camera.y && pos.camera.y>=height);
+    } else if (mask.terrain) {
+        isCloudVisible = (wPos.y>=height && pos.camera.y<=height) || 
+        (wPos.y<=height && pos.camera.y>=height);
+    }
+
+    if (isCloudVisible) {
+        vec3 getPlane   = wVec*((height-pos.camera.y)/wVec.y);
+        vec3 stepPos    = pos.camera.xyz+getPlane;
+
+        float dist = length(stepPos-pos.camera);
+
+        float fade      = linStep(dist, 1000.0, 7000.0);
+
+        if ((1.0-fade)>0.01) {
+            float oD        = vc_shape(stepPos);
+
+            if (oD>0.0) {
+                float stepTransmittance = exp2(-oD*1.11*invLog2);
+
+                cloud          += oD;
+
+                #if s_vcLightingQuality==0
+                    vc_scatter(scatter, oD, stepPos, 1.0, vDotL, transmittance, stepTransmittance);
+                #elif s_vcLightingQuality==1
+                    vc_multiscatter(scatter, oD, stepPos, 1.0, vDotL, transmittance, stepTransmittance);
+                #endif
+
+                fadeFactor     -= (fade);
+            }
+        }
+    }
+
+    vec3 color          = mix(rayleighColor, lightColor, saturate(scatter));
+
+    cloud               = saturate(cloud*pow2(fadeFactor));
+    cloudAlpha          = cloud;
+    returnCol           = mix(returnCol, color, cloud);
+}
+
+#elif s_cloudMode==1
+
 const float vc_altitude     = s_vcAltitude;
 const float vc_thickness    = s_vcThickness;
 const float vc_lowEdge      = vc_altitude-vc_thickness/2;
@@ -330,10 +404,11 @@ void vcloud(inout vec3 scenecol) {
 
         vec3 color  = mix(skylight, sunlight, scatter);
         cloud               = saturate(cloud);
-        cloudAlpha          = linStep(cloud, 0.0, 0.99);
+        cloudAlpha          = pow2(cloud)*pow3(fade);
         scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
     }
 }
+#endif
 
 void main() {
     scene.albedo    = texture(colortex0, coord).rgb;
@@ -374,8 +449,27 @@ void main() {
 
     bool water = pbr.roughness < 0.01;
 
+    #if s_cloudMode==0
+        pcloud();
+    #endif
+
     #if s_cloudMode==1
         vcloud(returnCol);
+    #endif
+
+    #ifdef s_godrays
+        vec4 translucentsample = texture(colortex6, coord);
+
+        vec3 godrayColor    = mix(normalize(translucentsample.rgb), vec3(1.0), translucentsample.a);
+            if (!translucency) godrayColor = vec3(1.0);
+
+        float godrayAlpha = 1.0-float(mask.terrain);
+            godrayAlpha *= 1.0-saturate(cloudAlpha);
+            godrayAlpha *= 1.0-translucentsample.a;
+
+        vec3 return6    = vec3(godrayAlpha)*godrayColor;
+    #else
+        vec3 return6 = vec3(0.0);
     #endif
 
     if (scene.sample3.r>0.75 && scene.sample3.r<0.95) returnCol *= 1.0-saturate(cloudAlpha)*0.9;
@@ -395,6 +489,7 @@ void main() {
     }
 
 
-    /*DRAWBUFFERS:0*/
+    /*DRAWBUFFERS:06*/
     gl_FragData[0]  = makeSceneOutput(returnCol);
+    gl_FragData[1]  = vec4(return6, 1.0);
 }

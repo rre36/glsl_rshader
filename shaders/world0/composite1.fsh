@@ -15,6 +15,7 @@ uniform sampler2D colortex5;
 uniform sampler2D colortex6;
 
 const bool colortex0MipmapEnabled = true;
+const bool colortex6MipmapEnabled = true;
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -34,6 +35,7 @@ uniform float viewHeight;
 uniform float rainStrength;
 uniform float wetness;
 uniform float eyeAltitude;
+uniform float sunAngle;
 
 uniform ivec2 eyeBrightnessSmooth;
 
@@ -414,6 +416,66 @@ void reflect_cloud(inout vec3 scenecol) {
 }
 #endif
 
+#ifdef s_godrays
+void godrays() { 
+    vec3 sunPos;
+    vec3 sunVec;
+    if (sunAngle>0.5) {
+        sunPos     = moonPosition;
+        sunVec     = vec.moon;
+    } else {
+        sunPos     = sunPosition;
+        sunVec     = vec.sun;
+    }
+
+    float sDotU = dot(vec.sun, vec.up);
+    float svisible = pow2(clamp(sDotU+0.1, 0.0, 0.1)/0.1);
+    float mDotU = dot(vec.moon, vec.up);
+    float mvisible = pow2(clamp(mDotU+0.1, 0.0, 0.1)/0.1);
+
+    const int samples = s_godraySamples;
+
+    vec3 nFrag      = -vec.view;
+    vec3 sgVec      = normalize(sunVec+nFrag);
+    float sunGrad   = 1.0-dot(sgVec, nFrag);
+    float sunGlow   = linStep(sunGrad, 0.2, 0.98);
+        sunGlow     = pow2(sunGlow);
+    
+    if (sunGlow>0.0) {
+        vec4 tpos   = vec4(sunPos, 1.0)*gbufferProjection;
+            tpos    = vec4(tpos.xyz/tpos.w, 1.0);
+            tpos.xy = tpos.xy/tpos.z;
+        vec2 lightpos = tpos.xy*0.5+0.5;
+        float truepos = sunPos.z/abs(sunPos.z);
+
+        float sunpos = abs(dot(vec.view, sunVec));
+        float decay  = pow(sunpos, 30.0)+pow(sunpos, 16.0)*0.8+pow2(sunpos)*0.125;
+
+        vec2 deltacoord = (lightpos-coord)*s_godrayLength;
+            deltacoord *= 1.0/samples;
+        vec2 tcoord     = coord-deltacoord*ditherDynamic;
+
+        vec3 godrays   = vec3(0.0);
+
+        if (decay>0.0 && truepos<1.0) {
+            for (int i = 0; i<samples; i++) {
+                tcoord += deltacoord;
+                //if (tcoord.x<0.0 || tcoord.x>1.0 || tcoord.y<0.0 || tcoord.y>1.0) break;
+
+                vec3 temp = textureLod(colortex6, saturate(tcoord), 1).rgb;
+                godrays += temp*(1.0-pow2(float(i)/samples));
+            }
+            godrays /= 8.0;
+            godrays *= decay*sunGlow;
+        }
+
+        vec3 lightcol = mix(light.sun, colSunglow*2.0, timeNight);
+
+        returnCol += godrays*lightcol*0.5*s_godrayStrength*(1.0-timeLightTransition);
+    }
+}
+#endif
+
 void main() {
     scene.albedo    = textureLod(colortex0, coord, 0).rgb;
     scene.normal    = unpackNormal(texture(colortex1, coord).rgb);
@@ -513,6 +575,10 @@ void main() {
 
         returnCol   += reflectCol;
     }
+
+    #ifdef s_godrays
+        godrays();
+    #endif
 
     /*DRAWBUFFERS:0*/
     gl_FragData[0]  = makeSceneOutput(returnCol);

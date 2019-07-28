@@ -18,6 +18,11 @@ const float shadowDistance      = 128.0;
 #define s_fogStart 0.3          //[0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75]
 #define s_fogExp 2.0            //[0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9 3.0 3.1 3.2 3.3 3.4 3.5 3.6 3.7 3.8 3.9 4.0]
 
+#define s_godrays
+#define s_godraySamples 8       //[2 4 6 8 10 12 14]
+#define s_godrayLength 1.0      //[0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+#define s_godrayStrength 1.0    //[0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
+
 //#define s_usePBR
 #define s_useTexAO
 #define s_useTexEmission

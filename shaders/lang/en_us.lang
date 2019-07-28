@@ -32,8 +32,13 @@ value.s_vcDetail.0=High
 value.s_vcDetail.1=Ultra
 
 option.setFog=Fog
-option.s_fogStart=Fog Start
-option.s_fogExp=Fog Exponent
+option.s_fogStart=Start
+option.s_fogExp=Exponent
+
+option.s_godrays=Godrays
+option.s_godraySamples=Samples
+option.s_godrayLength=Length
+option.s_godrayStrength=Intensity
 
 option.setBloom=Bloom
 option.setMotionblur=Motionblur
