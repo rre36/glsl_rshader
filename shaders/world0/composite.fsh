@@ -239,6 +239,9 @@ void underwaterFog() {
 void applyTranslucents() {
     vec4 translucents   = texture(colortex6, coord)*vec4(vec3(50.0), 1.0);
     if (eyeAltitude > (s_vcAltitude-s_vcThickness/2)) translucents.a *= 1.0-cloudAlpha;
+    vec3 translucentColor = normalize(translucents.rgb);
+        translucentColor = mix(vec3(1.0), translucentColor, translucents.a);
+    returnCol      *= translucentColor;
     returnCol       = mix(returnCol, translucents.rgb, translucents.a);
 }
 

@@ -523,7 +523,7 @@ vec4 inputSample        = texture(tex, coord);
 
     applyShading();
 
-    if (water==0) rdata.scene.a = inputSample.a;
+    //if (water==0) rdata.scene.a = inputSample.a;
     //rdata.scene.a = mix(rdata.scene.a, 1.0, saturate(sdata.specular));
 
     //rdata.scene.rgb     = vec3(sdata.direct);
