@@ -460,7 +460,7 @@ vec4 inputSample        = texture(tex, coord);
     depth.linear        = depthLin(depth.depth);
 
     pbr.roughness       = water==1 ? 0.0001 : 0.25;
-    pbr.specular        = 0.5;
+    pbr.specular        = 0.04;
     pbr.metallic        = 0.0;
 
     rdata.scene.rgb     = scene.albedo;

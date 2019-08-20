@@ -534,8 +534,8 @@ void main() {
         float fresnel   = 1.0;
         vec3 metalFresnel = vec3(1.0);
 
-        if (water) fresnel = pow3(linStep(baseFresnel, 0.0, 0.25))*0.98+0.02;
-        else fresnel = max(pow2(linStep(baseFresnel, 0.0, 0.25)), pbr.f0)*0.5;
+            if (water) fresnel = pow2(linStep(baseFresnel, 0.0, 0.25))*0.96+0.04;
+            else fresnel = pow4(linStep(baseFresnel, 0.0, 0.25))*finv(pbr.f0)+pbr.f0;
 
         reflectCol   = ref.screen.rgb;
         float reflectAlpha = ref.screen.a;
