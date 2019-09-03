@@ -216,7 +216,7 @@ void main() {
     sdata.ao            = 1.0;
     sdata.specular      = 0.0;
     sdata.shadowcolor   = vec3(1.0);
-    sdata.vanillaAo     = flatten(pow2(sample4), 0.85);
+    sdata.vanillaAo     = flatten(pow2(sample4), 0.95);
 
     returnCol           = scene.albedo;
 
