@@ -164,7 +164,7 @@ const float vc_highEdge     = vc_altitude+vc_thickness/2;
 #if s_cloudMode==0
 #include "/lib/nature/pcloud.glsl"
 void reflect_cloud(inout vec3 scene, in vec3 viewvec) {
-    vec3 wPos   = toWorldSpace(viewvec*1024.0);
+    vec3 wPos   = toWorldpos(viewvec*1024.0);
     vec3 wVec   = normalize(wPos-pos.camera.xyz);
 
     float height        = vc_altitude;

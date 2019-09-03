@@ -71,4 +71,7 @@ value.s_ssrQuality.0=Low
 value.s_ssrQuality.1=High
 value.s_ssrQuality.2=Ultra
 
+option.s_skyReflection=Sky Reflections
+option.s_cloudReflection=Cloud Reflections
+
 option.s_rainPuddles=Rain Puddles

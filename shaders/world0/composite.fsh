@@ -204,7 +204,7 @@ const float vc_highEdge     = vc_altitude+vc_thickness/2;
 #include "/lib/nature/pcloud.glsl"
 
 void pcloud() {
-    vec3 wPos   = worldSpacePos(depth.depth).xyz;
+    vec3 wPos   = getWorldpos(depth.depth).xyz;
     vec3 wVec   = normalize(wPos-pos.camera.xyz);
 
     float height        = vc_altitude;
