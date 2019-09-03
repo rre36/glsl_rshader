@@ -15,6 +15,8 @@ uniform int frameCounter;
 uniform float viewWidth;
 uniform float viewHeight;
 
+uniform sampler2D noisetex;
+
 vec4 position;
 
 attribute vec4 at_tangent;

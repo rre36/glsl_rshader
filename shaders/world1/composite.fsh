@@ -1,10 +1,8 @@
 #version 400 compatibility
+#define DIM 1
 #include "/lib/global.glsl"
 #include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
-
-const float sunlightLuma        = 2.0;
-const float skylightLuma        = 0.1;
 
 /* ------ uniforms ------ */
 
@@ -78,9 +76,8 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
@@ -158,7 +155,7 @@ void simpleFog() {
 void simpleFogEyeInWater() {
     vec3 fogVanilla = toLinear(fogColor)*2.0;
 
-    vec3 wPosSolid  = worldSpacePos(depth.solid).xyz;
+    vec3 wPosSolid  = getWorldpos(depth.solid).xyz;
     vec3 wPos       = pos.world.xyz;
     float solidDistance = length(wPosSolid-pos.camera)/(far*0.8);
     float transDistance  = length(wPos-pos.camera)/(far*0.8);
@@ -174,6 +171,13 @@ void simpleFogEyeInWater() {
 
 void applyTranslucents() {
     vec4 translucents   = texture(colortex6, coord)*vec4(vec3(10.0), 1.0);
+
+    if (translucency) {
+        vec3 translucentColor = saturate(normalize(translucents.rgb));
+            translucentColor = mix(vec3(1.0), translucentColor, translucents.a);
+        returnCol *= translucentColor;
+    }
+    
     returnCol       = mix(returnCol, translucents.rgb, translucents.a);
 }
 
@@ -192,13 +196,12 @@ void main() {
 
     translucency = depth.solid>depth.depth;
 
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth);
+    pos.world       = toWorldpos(pos.view);
 
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
 
     returnCol       = scene.albedo;
 

@@ -1,85 +1,80 @@
 #version 400 compatibility
-#include "/lib/util/math.glsl"
 #include "/lib/global.glsl"
+#include "/lib/buffer.glsl"
+#include "/lib/util/math.glsl"
 
-#ifdef setBloom
+#define taaClamp(x) clamp(x, 0.0, 65535.0)
+
+/* ------ buffer formats ------ */
+
+const int colortex7Format   = RGBA16F;
+
+const bool colortex7Clear   = false;
+
 const bool colortex0MipmapEnabled = true;
-#endif
+const bool colortex7MipmapEnabled = false;
 
-float bloomThreshold    = 10.0;
 
-uniform sampler2D colortex0;    //scene color
-uniform sampler2D colortex3;    //scene material masks
+/* ------ uniforms ------ */
+
+uniform sampler2D colortex0;
+uniform sampler2D colortex7;
+
 uniform sampler2D depthtex1;
 
 uniform int frameCounter;
 
-uniform float viewHeight;
-uniform float viewWidth;
-uniform float aspectRatio;
 uniform float frameTime;
-uniform float rainStrength;
-uniform float wetness;
+uniform float far;
+uniform float near;
+uniform float aspectRatio;
+uniform float frameTimeCounter;
+uniform float viewWidth;
+uniform float viewHeight;
+
+
+/* ------ inputs from vertex stage ------ */
 
 in vec2 coord;
 
-float pxWidth       = 1.0/viewWidth;
-
-float depth;
-
-struct maskData {
-    float terrain;
-    float hand;
-    float translucency;
-} mask;
-
-float unmap(in float x, float low, float high) {
-    if (x < low || x > high) x = low;
-    x -= low;
-    x /= high-low;
-    x /= 0.99;
-    x = clamp(x, 0.0, 1.0);
-    return x;
-}
-
-void decodeBuffer() {
-    vec4 maskBuffer = texture(colortex3, coord);
-    float maskData  = maskBuffer.r;
-    
-    float matData   = maskBuffer.g;
-
-    float beacon    = unmap(matData, 2.6, 3.5);
-    
-    mask.terrain    = float(maskData > 0.125 || beacon>0.5);
-    mask.hand       = float(maskData > 0.375 && maskData < 0.75);
-}
-
 vec3 returnCol;
+vec3 returnTemporal;
 
-#include "/lib/post/bloom1.glsl"
-#include "/lib/util/dither.glsl"
-#include "/lib/post/motionblur.glsl"
+
+#include "/lib/post/taa.glsl"
+
+float getImageLuma(sampler2D tex) {
+    vec3 sample1 = textureLod(colortex0, vec2(0.5), ceil(log2(max(viewHeight, viewWidth)))).rgb;
+    vec3 sample2 = textureLod(colortex0, vec2(0.5), ceil(log2(max(viewHeight, viewWidth)))/1.5).rgb;
+
+    return getLuma((sample1*0.9+sample2*0.1));
+}
+
+void temporalExposure(out float expResult) {
+    float expCurrent    = texture(colortex7, coord).a;
+    float expTarget     = taaClamp(getImageLuma(colortex0));
+        expTarget       = clamp(expTarget, expMinimum, expMaximum);
+        expResult       = mix(expCurrent, expTarget, 0.025*(frameTime/0.033));
+}
+
 
 void main() {
-	bloomThreshold *= 1.0-wetness*0.8;
+    returnCol       = textureLod(colortex0, coord, 0).rgb;
+    float depth     = textureLod(depthtex1, coord, 0).x;
 
-    returnCol = textureLod(colortex0, coord, 0).rgb;
+    float expResult = 1.0;
 
-    depth   = texture(depthtex1, coord).r;
+    #if expMethod==0
+        temporalExposure(expResult);
+    #endif
 
-    decodeBuffer();
+    #ifdef temporalAA
+        applyTAA(depth);
+    #else
+        returnTemporal  = returnCol;
+    #endif
 
-    vec3 blur = vec3(0.0);
-
-#ifdef setBloom
-	makeBloomBuffer(blur);
-#endif
-
-#ifdef setMotionblur
-	motionblur();
-#endif
-
-    /*DRAWBUFFERS:04*/
-    gl_FragData[0]  = toVec4(returnCol);
-    gl_FragData[1]  = toVec4(blur);
+    /*DRAWBUFFERS:07*/
+    gl_FragData[0]  = makeSceneOutput(returnTemporal);
+    gl_FragData[1]  = vec4(returnTemporal, expResult);
 }

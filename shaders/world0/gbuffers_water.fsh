@@ -2,19 +2,26 @@
 #include "/lib/global.glsl"
 #include "/lib/util/math.glsl"
 
-const float shadowIllumination  = 0.0;
-const float sunlightLuma        = 5.5;
-const float skylightLuma        = 0.1;
-const float minLight            = 0.007;
+const float minLight            = 0.01;
 const vec3 minLightColor        = vec3(0.8, 0.9, 1.0);
-const float lightLuma           = 2.0;
-const vec3 lightColor           = vec3(1.0, 0.26, 0.0);
+const float lightLuma           = 1.0;
+const vec3 lightColor           = vec3(1.0, 0.42, 0.0);
+
+const int noiseTextureResolution = 1024;
 
 
 /* ------ uniforms ------ */
 
 uniform sampler2D tex;
 uniform sampler2D noisetex;
+
+#ifdef s_useNormal
+    uniform sampler2D normals;
+#endif
+
+#ifdef s_usePBR
+    uniform sampler2D specular;
+#endif
 
 uniform int frameCounter;
 
@@ -27,10 +34,6 @@ uniform float viewHeight;
 uniform float rainStrength;
 uniform float wetness;
 
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
-uniform vec3 upPosition;
-uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
 
 uniform mat4 gbufferModelView;
@@ -103,12 +106,8 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 sun;
-    vec3 moon;
-    vec3 light;
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
@@ -146,8 +145,10 @@ struct lightData {
 
 struct pbrData {
     float roughness;
-    float specular;
+    float f0;
     float metallic;
+    float emission;
+    float ao;
 } pbr;
 
 struct returnData{
@@ -159,6 +160,11 @@ struct returnData{
     float materials;
 } rdata;
 
+float emissiveTex   = 0.0;
+vec4 pbrSample      = vec4(0.0);
+vec3 normalSample   = vec3(0.0);
+float ao            = 1.0;
+
 
 /* ------ includes ------ */
 
@@ -168,6 +174,15 @@ struct returnData{
 #include "/lib/util/dither.glsl"
 #include "/lib/util/taaJitter.glsl"
 #include "/lib/util/encode.glsl"
+
+vec3 flattenNormal(vec3 n) {
+    const vec3 flatNormal = vec3(0.0, 0.0, 1.0);
+    return mix(n, flatNormal, setNormalFlatten);
+}
+
+#define translucentPass
+
+#include "/lib/labPBR.glsl"
 
 
 /* ------ functions ------ */
@@ -197,124 +212,17 @@ void specGGX(in vec3 normal) {
     float F         = F0 + (1.0 - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
     float k2        = 0.25 * roughness;
 
-    sdata.specular  = dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2)*(water==1 ? 0.9 : pbr.specular);
+    sdata.specular  = dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2)*(water==1 ? 0.9 : pbr.f0);
     sdata.specular *= 1.0-rainStrength;
 }
 
-void getDirectLightStatic(bool isLit) {
-    if (isLit) {
-    float skylightMap   = scene.lightmap.y;
-    float lambert       = dot(scene.normal, vec.light);
-        lambert         = max(lambert, 0.0);
-        lambert         = lambert*0.5 + 0.5;
-    sdata.shadow        = sstep(scene.lightmap.y, 0.93, 0.95)*lambert;
-    sdata.indirect      = vec3(pow3(linStep(scene.lightmap.y, 0.66, 1.0))*0.5);
-    }
-}
+#define shadowBias 0.12
 
-#include "/lib/shadow/warp.glsl"
-
-vec3 getShadowCoord(in float offset, out bool canShadow, out float distortion, out float filterFix, out float distSqXZ, out float distSqY, out float shadowDistSq, out float cDepth, out vec3 wPosR) {
-    float dist      = length(pos.screen.xyz);
-    vec3 wPos       = vec3(0.0);
-    canShadow       = false;
-    distortion      = 0.0;
-    distSqXZ        = 0.0;
-    distSqY         = 0.0;
-    shadowDistSq    = 0.0;
-    cDepth          = 0.0;
-    offset         *= 3072.0/shadowMapResolution;
-
-    if (dist > 0.05) {
-        shadowDistSq    = pow2(shadowDistance);
-        wPos            = pos.screen;
-
-        #ifdef temporalAA
-            wPos        = screenSpacePos(depth.depth, taaJitter(gl_FragCoord.xy/vec2(viewWidth, viewHeight), -0.5));
-        #endif
-
-        wPos.xyz       += vec3(offset)*vec.light;
-        wPos.xyz        = viewMAD(gbufferModelViewInverse, wPos.xyz);
-        distSqXZ        = pow2(wPos.x) + pow2(wPos.z);
-        distSqY         = pow2(wPos.y);
-
-            wPos.xyz            = viewMAD(shadowModelView, wPos.xyz);
-            wPosR               = wPos;
-            wPos.xyz            = projMAD(shadowProjection, wPos.xyz);
-            warpShadowmap(wPos.xy, distortion);
-            filterFix           = 1.0/distortion;
-            wPos.z             *= 0.2;            
-            wPos.xyz            = wPos.xyz*0.5+0.5;
-
-            canShadow   = true;
-    }
-    return wPos;
-}
-
-float shadowFilter(in sampler2DShadow shadowtex, in vec3 wPos) {
-    const float step = 1.0/shadowMapResolution;
-    float noise     = ditherGradNoise()*pi;
-    vec2 offset     = vec2(cos(noise), sin(noise))*step;
-    float shade     = shadow2D(shadowtex, vec3(wPos.xy+offset, wPos.z)).x;
-        shade      += shadow2D(shadowtex, vec3(wPos.xy-offset, wPos.z)).x;
-        shade      += shadow2D(shadowtex, wPos.xyz).x*0.5;
-    return shade*0.4;
-}
-vec4 shadowFilterCol(in sampler2DShadow shadowtex, in vec3 wPos) {
-    const float step = 1.0/shadowMapResolution;
-    float noise     = ditherGradNoise()*pi;
-    vec2 offset     = vec2(cos(noise), sin(noise))*step;
-    vec4 shade     = shadow2D(shadowtex, vec3(wPos.xy+offset, wPos.z));
-        shade      += shadow2D(shadowtex, vec3(wPos.xy-offset, wPos.z));
-        shade      += shadow2D(shadowtex, wPos.xyz)*0.5;
-    return shade*0.4;
-}
-
-void getDirectLight(bool diffuseLit) {
-    float offset    = 0.08;
-
-    bool canShadow      = false;
-    float distortion    = 0.0;
-    float filterFix     = 0.0;
-    float distSqXZ      = 0.0;
-    float distSqY       = 0.0;
-    float shadowDistSq  = 0.0;
-    float cDepth        = 0.0;
-    float shadowFade    = 1.0;
-
-    vec3 wPosR          = vec3(0.0);
-    vec3 wPos           = getShadowCoord(offset, canShadow, distortion, filterFix, distSqXZ, distSqY, shadowDistSq, cDepth, wPosR);
-
-    float shade         = 1.0;
-    vec4 shadowcol      = vec4(1.0);
-    bool translucencyShadow = false;
-
-    if (canShadow) {
-        if (diffuseLit) {
-            shadowFade      = min(1.0-distSqXZ/shadowDistSq, 1.0) * min(1.0-distSqY/shadowDistSq, 1.0);
-            shadowFade      = saturate(shadowFade*2.0);
-
-        shade       = shadowFilter(shadowtex1, wPos.xyz);
-
-        shadowcol   = shadowFilterCol(shadowcolor0, wPos.xyz);
-
-        float temp1 = shadowFilter(shadowtex0, wPos.xyz);
-
-        translucencyShadow = temp1<shade;
-        shadowcol.a *= shadowFade;
-        }
-    }
-
-    sdata.shadow  = mix(1.0, shade, shadowFade);
-    sdata.shadowcolor = translucencyShadow ? mix(vec3(1.0), shadowcol.rgb, shadowcol.a) : vec3(1.0);
-}
+#include "shadow/core.glsl"
 
 float getLightmap(in float lightmap) {
-    lightmap = 1-clamp(lightmap*1.1, 0.0, 1.0);
-    lightmap *= 5.0;
-    lightmap = 1.0 / pow2(lightmap+0.1);
-    lightmap = sstep(lightmap, 0.025, 1.0);
-    return lightmap;
+    lightmap = linStep(lightmap, 1.0/24.0, 14.0/16.0);
+    return pow3(lightmap);
 }
 vec3 artificialLight() {
     float lightmap      = getLightmap(scene.lightmap.x);
@@ -322,19 +230,18 @@ vec3 artificialLight() {
     vec3 light          = mix(vec3(0.0), lcol, lightmap);
     return light;
 }
-
 void applyShading() {
-    sdata.lightmap      = sstep(scene.lightmap.y, 0.15, 0.95);
-    sdata.cave          = 1.0-sstep(scene.lightmap.y, 0.2, 0.5);
+    float lightmap      = sstep(scene.lightmap.y, 0.15, 0.95);
+    float cave          = 1.0-sstep(scene.lightmap.y, 0.2, 0.5);
 
-    vec3 indirectLight  = mix(sdata.skylight, light.sun, saturate(shadowIllumination));
-        indirectLight   = mix(indirectLight, minLightColor*minLight, sdata.cave);
+    vec3 indirectLight  = mix(sdata.skylight*lightmap, light.sun, saturate(s_shadowLuminance));
+        indirectLight   = mix(indirectLight, minLightColor*minLight, cave);
 
         indirectLight  += light.sun*sdata.indirect*(1.0-sdata.direct);
 
     vec3 artificial     = scene.lightmap.x > 0.01 ? artificialLight() : vec3(0.0);
 
-    vec3 directLight    = mix(indirectLight, light.sun*sdata.color, sdata.direct);
+    vec3 directLight    = indirectLight+light.sun*sdata.color*sdata.direct*finv(timeLightTransition);
         directLight     = bLighten(directLight, artificial);
 
     vec3 metalCol       = scene.albedo*normalize(scene.albedo);
@@ -348,6 +255,7 @@ void applyShading() {
 
     rdata.scene.rgb    += metalCol*pbr.metallic*sdata.result;
 }
+
 
 float noise2D(in vec2 coord) {
     coord      /= 1024;
@@ -374,13 +282,13 @@ float getWaterHeight(in vec3 wpos, const bool pom) {
         rpos *= 2.0;
         noise += noise2D(rpos.xz+rpos.y+windTemp)*0.0625;
 
-    float multi     = saturate((-dot(normalize(scene.normal), normalize(pos.screen)))*8.0)/sqrt(sqrt(max(vertexDist, 4.0)));
+    float multi     = saturate((-dot(normalize(scene.normal), normalize(pos.view)))*8.0)/sqrt(sqrt(max(vertexDist, 4.0)));
 
     return noise*multi*0.75;
 }
 
 vec3 parallaxCoord(vec3 coord) {
-    vec3 fragPos    = pos.screen.xyz;
+    vec3 fragPos    = pos.view.xyz;
     vec3 viewVec    = vertexViewVec;
     vec3 rpos       = coord;
     const int samples = 6;
@@ -451,6 +359,20 @@ void customWaterColor() {
 
 void main() {
 vec4 inputSample        = texture(tex, coord);
+
+    #ifdef s_useNormal
+        normalSample = texture(normals, coord).rgb;
+    #endif
+
+    #ifdef s_usePBR
+        pbrSample = texture(specular, coord);
+        if (water==1) pbr.roughness = 0.0001;
+    #else
+        pbr.roughness       = water==1 ? 0.0001 : 0.25;
+        pbr.f0              = 0.05;
+        pbr.metallic        = 0.0;
+    #endif
+
     inputSample.rgb    *= col.rgb;
     scene.albedo        = toLinear(inputSample.rgb);
     scene.normal        = nrm;
@@ -459,17 +381,10 @@ vec4 inputSample        = texture(tex, coord);
     depth.depth         = gl_FragCoord.z;
     depth.linear        = depthLin(depth.depth);
 
-    pbr.roughness       = water==1 ? 0.0001 : 0.25;
-    pbr.specular        = 0.04;
-    pbr.metallic        = 0.0;
-
     rdata.scene.rgb     = scene.albedo;
     rdata.scene.a       = inputSample.a;
     rdata.lmap          = lmap;
     rdata.materials     = 0.0;
-    rdata.metalness     = pbr.metallic;
-    rdata.roughness     = pbr.roughness;
-    rdata.specular      = pbr.specular;
 
     sdata.shadow        = 1.0;
     sdata.diffuse       = 1.0;
@@ -484,19 +399,15 @@ vec4 inputSample        = texture(tex, coord);
     sdata.skylight      = vec3(0.0);
     sdata.result        = vec3(0.0);
 
-    pos.sun         = sunPosition;
-    pos.moon        = moonPosition;
-    pos.light       = shadowLightPosition;
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth, gl_FragCoord.xy/vec2(viewWidth, viewHeight));
-    pos.world       = wpos.xyz;
+    pos.view        = getViewpos(depth.depth, gl_FragCoord.xy/vec2(viewWidth, viewHeight));
+    pos.world       = toWorldpos(pos.view);
 
     vec.sun         = sunVector;
     vec.moon        = moonVector;
     vec.light       = lightVector;
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
 
     light.sun       = colSunlight*sunlightLuma;
     light.sun       = mix(light.sun, vec3(vec3avg(light.sun))*0.15, rainStrength*0.95);
@@ -508,6 +419,14 @@ vec4 inputSample        = texture(tex, coord);
         getWaterNormal();
         customWaterColor();
     }
+
+    #ifdef s_useNormal
+        if (water==0) getLabNormal();
+    #endif
+
+    #ifdef s_usePBR
+        if (water==0) getLabPbr();
+    #endif
 
     diffuseLambert(scene.normal);
 
@@ -523,14 +442,19 @@ vec4 inputSample        = texture(tex, coord);
 
     applyShading();
 
-    //if (water==0) rdata.scene.a = inputSample.a;
-    //rdata.scene.a = mix(rdata.scene.a, 1.0, saturate(sdata.specular));
+    #ifdef s_usePBR
+        if (water==0) pbr.roughness = max(pbr.roughness, sqrt(0.007));
+    #endif
+
+    rdata.metalness     = pbr.metallic;
+    rdata.roughness     = pbr.roughness;
+    rdata.specular      = pbr.f0;
 
     //rdata.scene.rgb     = vec3(sdata.direct);
     //rdata.scene.a       = 1.0;
 
     /*DRAWBUFFERS:612*/
-    gl_FragData[0] = makeSceneOutput(rdata.scene)*vec4(vec3(0.02), 1.0);
+    gl_FragData[0] = makeSceneOutput(rdata.scene)*vec4(vec3(0.05), 1.0);
     gl_FragData[1] = toVec4(scene.normal*0.5+0.5);
     gl_FragData[2] = vec4(rdata.lmap, encodeV2(rdata.specular, rdata.roughness), 1.0);
     //gl_FragData[3] = vec4(0.25, rdata.materials, 0.0, 1.0);

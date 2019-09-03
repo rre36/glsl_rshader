@@ -1,14 +1,9 @@
 #version 400 compatibility
+#define DIM 1
 #include "/lib/global.glsl"
 #include "/lib/end/opt.glsl"
 #include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
-
-const float shadowIllumination  = 0.0;
-const float sunlightLuma        = 2.5;
-const float skylightLuma        = 0.4;
-const float lightLuma           = 1.0;
-const vec3 lightColor           = vec3(1.0, 0.42, 0.0);
 
 /* ------ uniforms ------ */
 
@@ -16,11 +11,10 @@ uniform sampler2D colortex0;
 uniform sampler2D colortex1;
 uniform sampler2D colortex2;
 uniform sampler2D colortex3;
-uniform sampler2D colortex4;
-uniform sampler2D colortex5;
 
 uniform sampler2D depthtex1;
 
+uniform int worldTime;
 uniform int frameCounter;
 
 uniform float far;
@@ -29,14 +23,26 @@ uniform float aspectRatio;
 uniform float frameTimeCounter;
 uniform float viewWidth;
 uniform float viewHeight;
+uniform float rainStrength;
+uniform float wetness;
 
+uniform vec3 sunPosition;
+uniform vec3 moonPosition;
 uniform vec3 upPosition;
+uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
+
+uniform vec3 skyColor;
+uniform vec3 fogColor;
 
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
+
+uniform sampler2D noisetex;
+
+const int noiseTextureResolution = 1024;
 
 
 /* ------ inputs from vertex stage ------ */
@@ -66,28 +72,18 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
 struct vectorData {
+    vec3 sun;
+    vec3 moon;
+    vec3 light;
     vec3 up;
     vec3 view;
 } vec;
-
-struct shadingData {
-    float direct;
-    float ao;
-    float lightmap;
-
-    vec3 color;
-    vec3 indirect;
-    vec3 skylight;
-
-    vec3 result;
-} sdata;
 
 struct lightData {
     vec3 sun;
@@ -113,45 +109,68 @@ vec3 unpackNormal(vec3 x) {
     return x*2.0-1.0;
 }
 
-float getLightmap(in float lightmap) {
-    lightmap = linStep(lightmap, 1.0/24.0, 14.0/16.0);
-    //lightmap = 1-clamp(lightmap*1.1, 0.0, 1.0);
-    //lightmap *= 5.0;
-    //lightmap = 1.0 / pow2(lightmap+0.1);
-    return pow3(lightmap);
+void skyGradient() {
+    vec3 skyVanilla = toLinear(skyColor)*0.8;
+    vec3 fogVanilla = toLinear(fogColor)*2.0;
+
+    vec3 nFrag      = -vec.view;
+    vec3 hVec       = normalize(-vec.up+nFrag);
+    vec3 hVec2      = normalize(vec.up+nFrag);
+
+    float hTop      = dot(hVec, nFrag);
+    float hBottom   = dot(hVec2, nFrag);
+
+    float horizonFade = linStep(hBottom, 0.3, 0.8);
+        horizonFade = pow4(horizonFade)*0.75;
+
+    float lowDome   = linStep(hBottom, 0.66, 0.71);
+        lowDome     = pow3(lowDome);
+
+    float horizonGrad = 1.0-max(hBottom, hTop);
+
+    float horizon   = linStep(horizonGrad, 0.15, 0.31);
+        horizon     = pow6(horizon)*0.8;
+
+    vec3 sky        = mix(skyVanilla, fogVanilla, horizonFade);
+        sky         = mix(sky, fogVanilla, horizon);
+        sky         = mix(sky, fogVanilla, lowDome);
+        
+    returnCol       = sky;
 }
-vec3 artificialLight() {
-    float lightmap      = getLightmap(scene.lightmap.x);
-    vec3 lcol           = light.artificial;
-    vec3 light          = mix(vec3(0.0), lcol, lightmap+mat.emissive*8.0);
-    return light;
+
+float noise2D(in vec2 coord) {
+    coord /= noiseTextureResolution;
+    return texture2D(noisetex, coord).x;
 }
+void skyStars() {
+    vec3 fragPos = pos.view;
+    vec3 normFragpos = normalize(fragPos);
+    vec3 wPos = vec3(gbufferModelViewInverse * vec4(fragPos,1.0));
 
-void applyShading() {
-    sdata.lightmap      = sstep(scene.lightmap.y, 0.15, 0.95);
+    vec3 planeIntersect = wPos/(wPos.y+length(wPos.xz));
+    vec2 coord = floor((planeIntersect.xz*0.4+pos.camera.xz*0.0001)*1536)/1536;
+    vec2 coord2 = (planeIntersect.xz)*32;
+        coord *= 1024.0;
 
-    vec3 indirectLight  = mix(light.sky, light.sun, saturate(shadowIllumination));
+	float NdotU = sqrt(sqrt(max(dot(normFragpos,normalize(vec.up)),0.0)));
+	
+    vec3 colorStar = vec3(1.0, 1.0, 0.98);
 
-    vec3 artificial     = scene.lightmap.x > 0.01 ? artificialLight() : vec3(0.0);
+	float star = 1.0;
+		star *= noise2D(coord.xy);
+		star *= noise2D(coord.xy+0.1);
+        star *= noise2D(coord.xy+0.23);
 
-    vec3 directLight    = mix(indirectLight, light.sun*sdata.color, sdata.direct);
-        directLight     = bLighten(directLight, artificial);
+	star = max(star-0.825,0.0)*5.0;
+    star = clamp(star, 0.0, 1.0);
 
-    vec3 metalCol       = scene.albedo*normalize(scene.albedo);
-
-    returnCol          *= 1.0-pbr.metallic;
-
-    sdata.result        = directLight*sdata.ao;
-    returnCol          *= sdata.result;
-
-    returnCol          += metalCol*pbr.metallic*sdata.result;
+    returnCol += colorStar*1.0*star;
 }
 
 void main() {
     scene.albedo    = texture(colortex0, coord).rgb;
     scene.normal    = unpackNormal(texture(colortex1, coord).rgb);
     scene.sample2   = texture(colortex2, coord);
-    scene.lightmap  = scene.sample2.rg;
     scene.sample3   = texture(colortex3, coord);
 
     decodeData();
@@ -159,43 +178,20 @@ void main() {
     depth.depth     = texture(depthtex1, coord).x;
     depth.linear    = depthLin(depth.depth);
 
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth);
+    pos.world       = toWorldpos(pos.view);
 
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
 
-    light.sun       = colSkylight*sunlightLuma;
-    light.sky       = colSkylight*skylightLuma;
-    light.artificial = lightColor*lightLuma;
+    returnCol       = scene.albedo;
 
-    sdata.direct        = 1.0;
-    sdata.ao            = 1.0;
-    sdata.result        = vec3(0.0);
-    sdata.color         = vec3(1.0);
-
-    returnCol           = scene.albedo;
-
-    if(mask.terrain) {
-        light.artificial = lightColor*lightLuma;
-
-        sdata.color     = decodeColor(scene.sample3.a);
-
-        vec4 sample4    = texture(colortex4, coord);
-
-        vec3 sample5    = texture(colortex5, coord).rgb;
-        sdata.direct    = sample5.r;
-
-        sdata.ao        = sample4.a;
-
-        applyShading();
+    if(!mask.terrain) {
+        returnCol   = vec3(0.0);
+        skyStars();
     }
 
-    //returnCol   = light.sun;
-
-    /*DRAWBUFFERS:03*/
+    /*DRAWBUFFERS:0*/
     gl_FragData[0]  = makeSceneOutput(returnCol);
-    gl_FragData[1]  = vec4(scene.sample3.r, encodeV3(scene.albedo), scene.sample3.b, 1.0);
 }

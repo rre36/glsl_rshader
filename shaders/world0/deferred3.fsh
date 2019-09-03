@@ -3,9 +3,6 @@
 #include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
 
-const float sunlightLuma        = 5.5;
-const float skylightLuma        = 0.1;
-
 /* ------ uniforms ------ */
 
 uniform sampler2D colortex0;
@@ -29,10 +26,6 @@ uniform float viewHeight;
 uniform float rainStrength;
 uniform float wetness;
 
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
-uniform vec3 upPosition;
-uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
 
 uniform vec3 skyColor;
@@ -88,12 +81,8 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 sun;
-    vec3 moon;
-    vec3 light;
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
@@ -143,9 +132,8 @@ vec3 getSunDisk(in float sunGrad, in float hBottom, in vec3 sunDiscCol) {
 
     return sunDisc*sunDiscCol*sunDiscColMod*25.0*(1.0-rainStrength);
 }
-
 void skyGradient() {
-    vec3 nFrag      = -normalize(screenSpacePos(depth.depth).xyz);
+    vec3 nFrag      = -vec.view;
     vec3 hVec       = normalize(-vec.up+nFrag);
     vec3 hVec2      = normalize(vec.up+nFrag);
     vec3 sgVec      = normalize(vec.sun+nFrag);
@@ -212,7 +200,7 @@ float noise2D(in vec2 coord) {
     return texture2D(noisetex, coord).x;
 }
 void skyStars() {
-    vec3 fragPos = pos.screen.xyz;
+    vec3 fragPos = pos.view;
     vec3 normFragpos = normalize(fragPos);
     vec3 wPos = vec3(gbufferModelViewInverse * vec4(fragPos,1.0));
 
@@ -239,61 +227,17 @@ void skyStars() {
     returnCol += colorStar*1.0*star*(timeNight*0.3+timeMoon*0.7);
 }
 
-vec3 skyGradientC() {
-    vec3 nFrag      = -normalize(screenSpacePos(depth.depth).xyz);
-    vec3 hVec       = normalize(-vec.up+nFrag);
-    vec3 hVec2      = normalize(vec.up+nFrag);
-    vec3 sgVec      = normalize(vec.sun+nFrag);
-    vec3 mgVec      = normalize(vec.moon+nFrag);
-
-    float hTop      = dot(hVec, nFrag);
-    float hBottom   = dot(hVec2, nFrag);
-
-    float horizonFade = linStep(hBottom, 0.3, 0.8);
-        horizonFade = pow4(horizonFade)*0.75;
-
-    float lowDome   = linStep(hBottom, 0.66, 0.71);
-        lowDome     = pow3(lowDome);
-
-    float horizonGrad = 1.0-max(hBottom, hTop);
-
-    float horizon   = linStep(horizonGrad, 0.12, 0.31);
-        horizon     = pow5(horizon)*0.8;
-
-    float sunGrad   = 1.0-dot(sgVec, nFrag);
-    float moonGrad  = 1.0-dot(mgVec, nFrag);
-
-    float horizonGlow = saturate(pow2(sunGrad));
-        horizonGlow = pow3(linStep(horizonGrad, 0.08-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
-        horizonGlow = pow2(horizonGlow*1.3);
-        horizonGlow = saturate(horizonGlow*0.75);
-
-    float sunGlow   = linStep(sunGrad, 0.5, 0.98);
-        sunGlow     = pow5(sunGlow);
-        sunGlow    *= 1.0-timeNoon*0.8;
-
-    float moonGlow  = pow(moonGrad*0.85, 15.0);
-        moonGlow    = saturate(moonGlow*1.05)*0.8;
-
-    vec3 sunColor   = colSunglow*2;
-    vec3 sunLight   = colSunlight;
-    vec3 moonColor  = vec3(0.55, 0.75, 1.0)*0.1;
-
-    vec3 sky        = mix(colSky, colHorizon, horizonFade);
-        sky         = mix(sky, colHorizon, horizon);
-        sky         = mix(sky, colHorizon, lowDome);
-        sky         = mix(sky, sunColor, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
-        sky         = mix(sky, moonColor, moonGlow*timeNight);
-
-    return sky*3;
-}
+#include "/lib/nature/getSky.glsl"
 
 void simpleFog() {
+    vec3 fogVanilla = toLinear(fogColor)*2.0;
+    
     float falloff   = saturate(length(pos.world.xyz-pos.camera)/far);
-        falloff     = linStep(falloff, s_fogStart*(1.0-timeSunrise*0.5), 0.999);
+        falloff     = linStep(falloff, s_fogStart, 0.999);
         falloff     = pow(falloff, s_fogExp);
     
-    vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;
+    vec3 skyCol     = falloff>0.0 ? getSky(vec.view) : colHorizon;
+
     returnCol       = mix(returnCol, skyCol, falloff);
 }
 
@@ -308,19 +252,15 @@ void main() {
     depth.depth     = texture(depthtex1, coord).x;
     depth.linear    = depthLin(depth.depth);
 
-    pos.sun         = sunPosition;
-    pos.moon        = moonPosition;
-    pos.light       = shadowLightPosition;
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth);
+    pos.world       = toWorldpos(pos.view);
 
     vec.sun         = sunVector;
     vec.moon        = moonVector;
     vec.light       = lightVector;
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
 
     returnCol       = scene.albedo;
 
@@ -329,11 +269,9 @@ void main() {
         skyStars();
     }
 
-    #ifdef setFog
-        if(mask.terrain) {
-            simpleFog();
-        }
-    #endif
+    if(mask.terrain) {
+        simpleFog();
+    }
 
     /*DRAWBUFFERS:06*/
     gl_FragData[0]  = makeSceneOutput(returnCol);

@@ -47,7 +47,7 @@ void dbao(in float falloff) {
     ao          = saturate(ao);
     ao          = 1.0-ao;
     ao          = 1.0-ao*falloff;
-    ao          = ao*0.8+0.2;
+    ao          = ao*0.7+0.3;
     sdata.ao    = ao;
     }
 }

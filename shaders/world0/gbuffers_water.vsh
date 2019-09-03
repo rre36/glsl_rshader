@@ -13,11 +13,10 @@ flat out vec3 nrm;
 flat out vec3 tangent;
 flat out vec3 binormal;
 
-attribute vec4 at_tangent;
-
 flat out int water;
 
 attribute vec4 mc_Entity;
+attribute vec4 at_tangent;
 
 uniform int frameCounter;
 uniform float viewWidth;
@@ -27,6 +26,8 @@ uniform vec3 sunPosition;
 uniform vec3 moonPosition;
 uniform vec3 upPosition;
 uniform vec3 shadowLightPosition;
+
+uniform sampler2D noisetex;
 
 flat out vec3 sunVector;
 flat out vec3 moonVector;

@@ -1,13 +1,16 @@
 #version 400 compatibility
+#define DIM -1
 #include "/lib/global.glsl"
 #include "/lib/nether/opt.glsl"
 #include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
 
+const float lightLuma           = 1.0;
+const vec3 lightColor           = vec3(1.0, 0.42, 0.0);
 
 /* ------ buffer formats ------ */
 
-const int colortex0Format   = R11F_G11F_B10F;
+const int colortex0Format   = RGB16F;
 const int colortex1Format   = RGB16F;
 const int colortex2Format   = RGB16;
 const int colortex3Format   = RGBA16;
@@ -49,6 +52,9 @@ in vec2 coord;
 
 flat in vec3 upVector;
 
+flat in vec3 colSkylight;
+flat in vec3 colSky;
+flat in vec3 colHorizon;
 
 /* ------ structs ------ */
 
@@ -66,9 +72,8 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
@@ -80,11 +85,20 @@ struct vectorData {
 struct shadingData {
     float ao;
     float vanillaAo;
+    vec3 result;
+    float lightmap;
 } sdata;
+
+struct lightData {
+    vec3 sky;
+    vec3 artificial;
+} light;
 
 struct returnData {
     float ao;
 } rdata;
+
+vec3 returnCol = vec3(0.0);
 
 
 /* ------ includes ------ */
@@ -109,6 +123,38 @@ vec3 unpackNormal(vec3 x) {
     #include "/lib/shadow/dbao.glsl"
 #endif
 
+float getLightmap(in float lightmap) {
+    lightmap = linStep(lightmap, 1.0/24.0, 14.0/16.0);
+    return pow3(lightmap);
+}
+vec3 artificialLight() {
+    float lightmap      = getLightmap(scene.lightmap.x);
+    vec3 lcol           = light.artificial;
+    vec3 light          = mix(vec3(0.0), lcol, lightmap+mat.emissive*8.0);
+    return light;
+}
+
+void applyShading() {
+    sdata.lightmap      = sstep(scene.lightmap.y, 0.15, 0.95);
+
+    vec3 indirectLight  = light.sky;
+
+    vec3 artificial     = scene.lightmap.x > 0.01 ? artificialLight() : vec3(0.0);
+
+    vec3 directLight    = indirectLight;
+        directLight     = bLighten(directLight, artificial);
+
+    vec3 metalCol       = scene.albedo*normalize(scene.albedo);
+
+    returnCol          *= 1.0-pbr.metallic;
+
+    sdata.result        = directLight*sdata.ao;
+    returnCol          *= sdata.result;
+
+    returnCol          += metalCol*pbr.metallic*sdata.result;
+}
+
+
 void main() {
     scene.albedo    = texture(colortex0, coord).rgb;
     scene.normal   = unpackNormal(texture(colortex1, coord).rgb);
@@ -122,16 +168,20 @@ void main() {
     depth.depth     = texture(depthtex1, coord).x;
     depth.linear    = depthLin(depth.depth);
 
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth);
+    pos.world       = toWorldpos(pos.view);
 
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
+
+    light.sky       = colSkylight*skylightLuma;
+    light.artificial = lightColor*lightLuma;
 
     sdata.ao            = 1.0;
     sdata.vanillaAo     = flatten(sample4, 0.85);
+
+    returnCol           = scene.albedo;
 
     if(mask.terrain) {
         float worldDistance = length(pos.world.xyz-pos.camera.xyz);
@@ -140,10 +190,12 @@ void main() {
         #ifdef setAmbientOcclusion
             dbao(falloff);
         #endif
+        sdata.ao *= sdata.vanillaAo;
+
+        applyShading();
     }
 
-    rdata.ao            = sdata.ao*sdata.vanillaAo;
-
-    /*DRAWBUFFERS:4*/
-    gl_FragData[0]  = vec4(vec3(0.0), rdata.ao);
+    /*DRAWBUFFERS:03*/
+    gl_FragData[0]  = makeSceneOutput(returnCol);
+    gl_FragData[1]  = vec4(scene.sample3.r, encodeV3(scene.albedo), scene.sample3.b, 1.0);
 }

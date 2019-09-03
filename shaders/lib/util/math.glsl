@@ -1,4 +1,8 @@
 const float pi = 3.14159265358979323846;
+const float tau = 2*pi;
+const float phi = sqrt(5.0)*0.5+0.5;
+const float gangle = tau/phi/pi;
+const float invLog2 = 1.0/log(2.0);
 
 #define far16 256.0
 
@@ -15,7 +19,9 @@ const float pi = 3.14159265358979323846;
 #define sstep(x, low, high) smoothstep(low, high, x)
 #define saturate(x) clamp(x, 0.0, 1.0)
 
-const float invLog2 = 1.0/log(2.0);
+vec2 sincos(float x) {
+    return vec2(sin(x), cos(x));
+}
 
 float pow2(float x) {
     return x*x;
@@ -61,13 +67,6 @@ float sumVec2(vec2 x) {
 }
 float sumVec3(vec3 x) {
     return x.x+x.y+x.z;
-}
-
-float saturateF(float x) {
-    return clamp(x, 0.0, 1.0);
-}
-vec3 saturateV3(vec3 x) {
-    return clamp(x, 0.0, 1.0);
 }
 
 float smoothCubic(float x) {

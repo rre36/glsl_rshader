@@ -18,6 +18,8 @@ uniform float viewWidth;
 uniform float viewHeight;
 uniform vec3 upPosition;
 
+uniform sampler2D noisetex;
+
 vec4 position;
 
 attribute vec4 at_tangent;

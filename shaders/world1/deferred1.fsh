@@ -1,19 +1,33 @@
 #version 400 compatibility
+#define DIM 1
 #include "/lib/global.glsl"
 #include "/lib/end/opt.glsl"
 #include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
 
+const float minLight            = 0.01;
+const vec3 minLightColor        = vec3(0.8, 0.9, 1.0);
+const float lightLuma           = 1.0;
+const vec3 lightColor           = vec3(1.0, 0.42, 0.0);
+
 
 /* ------ buffer formats ------ */
 
-const int colortex0Format   = R11F_G11F_B10F;
+const int colortex0Format   = RGB16F;
 const int colortex1Format   = RGB16F;
 const int colortex2Format   = RGB16;
 const int colortex3Format   = RGBA16;
 const int colortex4Format   = RGBA16F;
 const int colortex5Format   = RG16F;
 const int colortex6Format   = RGBA16;
+
+
+/* ------ internal parameters ------ */
+
+const float sunPathRotation = -12.5;
+
+const float wetnessHalflife = 300.0;
+const float drynessHalflife = 100.0;
 
 
 /* ------ uniforms ------ */
@@ -46,8 +60,9 @@ uniform float aspectRatio;
 uniform float frameTimeCounter;
 uniform float viewWidth;
 uniform float viewHeight;
+uniform float rainStrength;
+uniform float wetness;
 
-uniform vec3 upPosition;
 uniform vec3 cameraPosition;
 
 uniform mat4 gbufferModelView;
@@ -60,7 +75,23 @@ uniform mat4 gbufferProjectionInverse;
 
 in vec2 coord;
 
+flat in vec3 sunVector;
+flat in vec3 moonVector;
+flat in vec3 lightVector;
 flat in vec3 upVector;
+
+flat in float timeSunrise;
+flat in float timeNoon;
+flat in float timeSunset;
+flat in float timeNight;
+flat in float timeMoon;
+flat in float timeLightTransition;
+flat in float timeSun;
+
+flat in vec3 colSunlight;
+flat in vec3 colSkylight;
+flat in vec3 colSky;
+flat in vec3 colHorizon;
 
 
 /* ------ structs ------ */
@@ -79,33 +110,39 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
 struct vectorData {
+    vec3 sun;
+    vec3 moon;
+    vec3 light;
     vec3 up;
     vec3 view;
 } vec;
 
 struct shadingData {
+    float diffuse;
     float shadow;
+    float specular;
     float ao;
     float lit;
     float vanillaAo;
 
     vec3 shadowcolor;
     vec3 result;
+    vec3 indirect;
 } sdata;
 
-struct returnData {
-    float directLight;
-    float ao;
+struct lightData {
+    vec3 sun;
+    vec3 sky;
+    vec3 artificial;
+} light;
 
-    vec3 shadowColor;
-} rdata;
+vec3 returnCol  = vec3(0.0);
 
 
 /* ------ includes ------ */
@@ -125,53 +162,44 @@ struct returnData {
 vec3 unpackNormal(vec3 x) {
     return x*2.0-1.0;
 }
+void diffuseLambert(in vec3 normal) {
+    normal          = normalize(normal);
+    vec3 light      = normalize(vec.light);
+    float lambert   = dot(normal, light);
+        lambert     = max(lambert, 0.0);
+    sdata.diffuse   = saturate(mix(lambert, 1.0, mat.foliage*0.7));
+}
+
+void specGGX(in vec3 normal) {
+    float roughness = pow2(pbr.roughness);
+    #ifdef s_usePBR
+        float F0        = pbr.f0;
+    #else
+        float F0        = 0.08;
+        if (pbr.metallic>0.5) {
+            F0          = 0.2;
+        }
+    #endif
+    vec3 h          = vec.light - vec.view;
+    float hn        = inversesqrt(dot(h, h));
+    float dotLH     = saturate(dot(h,vec.light)*hn);
+    float dotNH     = saturate(dot(h,normal)*hn);
+    float dotNL     = saturate(dot(normal,vec.light));  
+    float denom     = (dotNH * roughness - dotNH) * dotNH + 1.0;
+    float D         = roughness / (pi * denom * denom);
+    float F         = F0 + (1.0 - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
+    float k2        = 0.25 * roughness;
+
+    sdata.specular  = dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2);
+    
+    #ifndef s_usePBR
+        sdata.specular *= pbr.f0;
+    #endif
+    
+    sdata.specular *= 1.0-rainStrength;
+}
 
 #include "/lib/shadow/warp.glsl"
-
-vec4 getShadowCoord(in float offset, out bool canShadow, out float distortion, out float filterFix, out float distSqXZ, out float distSqY, out float shadowDistSq, out float cDepth, out vec4 wPosR) {
-    float dist      = length(pos.screen.xyz);
-    vec4 wPos       = vec4(0.0);
-    canShadow       = false;
-    distortion      = 0.0;
-    distSqXZ        = 0.0;
-    distSqY         = 0.0;
-    shadowDistSq    = 0.0;
-    cDepth          = 0.0;
-    offset         *= 3072.0/shadowMapResolution;
-
-    vec3 upVec      = vec3(0.0, 1.0, 0.0);
-        upVec       = mat3(gbufferModelView)*upVec;
-
-
-    if (dist > 0.05) {
-        shadowDistSq    = pow2(shadowDistance);
-        wPos            = pos.screen;
-
-        #ifdef temporalAA
-            wPos        = screenSpacePos(depth.depth, taaJitter(gl_FragCoord.xy/vec2(viewWidth, viewHeight), -0.5));
-        #endif
-
-        wPos.xyz       += vec3(offset)*upVec;
-        wPos            = gbufferModelViewInverse*wPos;
-        distSqXZ        = pow2(wPos.x) + pow2(wPos.z);
-        distSqY         = pow2(wPos.y);
-
-        if (true) {
-            wPos.xyz            = mat3(shadowModelView)*wPos.xyz + shadowModelView[3].xyz;
-            wPosR               = wPos;
-            cDepth              = -wPos.z;
-            wPos.xyz            = diag3(shadowProjection)*wPos.xyz + shadowProjection[3].xyz;
-            warpShadowmap(wPos.xy, distortion);
-            filterFix           = 1.0/distortion;
-            wPos.z             *= 0.2;
-            
-            wPos.xyz            = wPos.xyz*0.5+0.5;
-
-            canShadow   = true;
-        }
-    }
-    return wPos;
-}
 
 float shadowFilter(in sampler2DShadow shadowtex, in vec3 wPos) {
     const float step = 1.0/shadowMapResolution;
@@ -192,40 +220,44 @@ vec4 shadowFilterCol(in sampler2DShadow shadowtex, in vec3 wPos) {
     return shade*0.4;
 }
 
+vec3 getShadowCoordinate2D(in vec3 screenpos, in float bias, out float distortion) {
+	vec3 position 	= screenpos;
+		position 	= viewMAD(gbufferModelViewInverse, position);
+        position.y += bias;
+		position 	= viewMAD(shadowModelView, position);
+		position 	= projMAD(shadowProjection, position);
+		position.z *= 0.2;
+
+    distortion      = 1.0;
+    warpShadowmap(position.xy, distortion);
+
+	return position*0.5+0.5;
+}
+
 void getDirectLight(bool diffuseLit) {
-    float offset    = 0.08;
-
-    bool canShadow      = false;
+    float bias          = 0.08;
     float distortion    = 0.0;
-    float filterFix     = 0.0;
-    float distSqXZ      = 0.0;
-    float distSqY       = 0.0;
-    float shadowDistSq  = 0.0;
-    float cDepth        = 0.0;
-    float shadowFade    = 0.0;
+    vec3 viewpos        = pos.view;
 
-    vec4 wPosR          = vec4(0.0);
-    vec4 wPos           = getShadowCoord(offset, canShadow, distortion, filterFix, distSqXZ, distSqY, shadowDistSq, cDepth, wPosR);
+    #ifdef temporalAA
+        viewpos = getViewpos(depth.depth, taaJitter(gl_FragCoord.xy/vec2(viewWidth, viewHeight), -0.5));
+    #endif
+
+    vec3 scoord         = getShadowCoordinate2D(pos.view, bias, distortion);
 
     float shade         = 1.0;
     vec4 shadowcol      = vec4(1.0);
     bool translucencyShadow = false;
 
-    if (canShadow) {
-        if (diffuseLit) {
-            shadowFade      = min(1.0-distSqXZ/shadowDistSq, 1.0) * min(1.0-distSqY/shadowDistSq, 1.0);
-            shadowFade      = saturate((shadowFade-0.1)*2.0);
+    if (diffuseLit) {
+        shade       = shadowFilter(shadowtex1, scoord);
+        shadowcol   = shadowFilterCol(shadowcolor0, scoord);
 
-        shade       = shadowFilter(shadowtex1, wPos.xyz);
-
-        shadowcol   = shadowFilterCol(shadowcolor0, wPos.xyz);
-
-        float temp1 = shadowFilter(shadowtex0, wPos.xyz);
+        float temp1 = shadowFilter(shadowtex0, scoord);
 
         translucencyShadow = temp1<shade;
-        //shadowcol.a *= shadowFade;
-        }
     }
+
     sdata.shadow    = shade;
     sdata.shadowcolor = translucencyShadow ? mix(vec3(1.0), shadowcol.rgb, shadowcol.a) : vec3(1.0);
 }
@@ -234,9 +266,44 @@ void getDirectLight(bool diffuseLit) {
     #include "/lib/shadow/dbao.glsl"
 #endif
 
+float getLightmap(in float lightmap) {
+    lightmap = linStep(lightmap, 1.0/24.0, 14.0/16.0);
+    return pow3(lightmap);
+}
+vec3 artificialLight() {
+    float lightmap      = getLightmap(scene.lightmap.x);
+    vec3 lcol           = light.artificial;
+    vec3 light          = mix(vec3(0.0), lcol, lightmap+mat.emissive*8.0);
+    return light;
+}
+
+void applyShading() {
+    vec3 indirectLight  = mix(light.sky, light.sun, saturate(s_shadowLuminance));
+
+        indirectLight  += light.sun*sdata.indirect*(1.0-sdata.lit);
+
+    vec3 artificial     = scene.lightmap.x > 0.01 ? artificialLight() : vec3(0.0);
+
+    vec3 directLight    = indirectLight+light.sun*sdata.shadowcolor*sdata.lit;
+        directLight     = bLighten(directLight, artificial);
+
+    vec3 metalCol       = scene.albedo*normalize(scene.albedo);
+
+    float isMetal       = float(pbr.metallic>0.1);
+
+    returnCol          *= 1.0-isMetal;
+
+    sdata.result        = directLight*sdata.ao;
+    returnCol          *= sdata.result;
+    vec3 specular       = sdata.specular*light.sun*sdata.lit*mix(vec3(1.0), metalCol, isMetal);
+    returnCol          += specular*sdata.shadowcolor;
+
+    returnCol          += metalCol*isMetal*sdata.result;
+}
+
 void main() {
     scene.albedo    = texture(colortex0, coord).rgb;
-    scene.normal   = unpackNormal(texture(colortex1, coord).rgb);
+    scene.normal    = unpackNormal(texture(colortex1, coord).rgb);
     scene.sample2   = texture(colortex2, coord);
     scene.lightmap  = scene.sample2.rg;
     scene.sample3   = texture(colortex3, coord);
@@ -247,38 +314,51 @@ void main() {
     depth.depth     = texture(depthtex1, coord).x;
     depth.linear    = depthLin(depth.depth);
 
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth);
+    pos.world       = toWorldpos(pos.view);
 
+    vec.sun         = sunVector;
+    vec.moon        = moonVector;
+    vec.light       = lightVector;
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
 
     sdata.shadow        = 1.0;
+    sdata.diffuse       = 1.0;
+    sdata.indirect      = vec3(0.0);
     sdata.ao            = 1.0;
+    sdata.specular      = 0.0;
     sdata.shadowcolor   = vec3(1.0);
-    sdata.vanillaAo     = flatten(sample4, 0.85);
+    sdata.vanillaAo     = flatten(pow2(sample4), 0.85);
+
+    returnCol           = scene.albedo;
 
     if(mask.terrain) {
+        light.sun       = colSunlight*sunlightLuma;
+        light.sun       = mix(light.sun, vec3(vec3avg(light.sun))*0.15, rainStrength*0.95);
+        light.sky       = colSkylight*skylightLuma;
+        light.sky       = mix(light.sky, vec3(vec3avg(light.sky))*0.4, rainStrength*0.95);
+        light.artificial = lightColor*lightLuma;
+
+
         float worldDistance = length(pos.world.xyz-pos.camera.xyz);
         float falloff       = 1.0-pow2(linStep(worldDistance, 100.0, 160.0));
 
-        getDirectLight(true);
+        getDirectLight(sdata.diffuse>0.01);
 
-        sdata.lit       = sdata.shadow;
-
+        sdata.lit       = min(sdata.shadow, sdata.diffuse);
+        
         #ifdef setAmbientOcclusion
             dbao(falloff);
         #endif
+
+        sdata.ao    *= sdata.vanillaAo;
+
+        applyShading();
     }
 
-    rdata.shadowColor   = sdata.shadowcolor;
-    rdata.directLight   = sdata.lit;
-    rdata.ao            = sdata.ao*sdata.vanillaAo;
-
-    /*DRAWBUFFERS:345*/
-    gl_FragData[0]  = max(vec4(scene.sample3.rgb, encodeV3(rdata.shadowColor)), 0.0);
-    gl_FragData[1]  = vec4(vec3(0.0), rdata.ao);
-    gl_FragData[2]  = max(vec4(rdata.directLight, 0.0, 0.0, 1.0), 0.0);
+    /*DRAWBUFFERS:03*/
+    gl_FragData[0]  = makeSceneOutput(returnCol);
+    gl_FragData[1]  = vec4(scene.sample3.r, encodeV3(scene.albedo), scene.sample3.b, 1.0);
 }

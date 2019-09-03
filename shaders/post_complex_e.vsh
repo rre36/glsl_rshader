@@ -6,6 +6,7 @@ out vec2 coord;
     uniform vec3 upPosition;
 
     flat out vec3 upVector;
+    uniform mat4 gbufferModelView;
 #endif
 
 #ifdef doNvars

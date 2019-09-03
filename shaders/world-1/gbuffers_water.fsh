@@ -1,10 +1,9 @@
 #version 400 compatibility
+#define DIM -1
 #include "/lib/global.glsl"
 #include "/lib/util/math.glsl"
 
 const float shadowIllumination  = 0.0;
-const float sunlightLuma        = 2.5;
-const float skylightLuma        = 0.1;
 const float minLight            = 0.01;
 const vec3 minLightColor        = vec3(0.8, 0.9, 1.0);
 const float lightLuma           = 1.0;
@@ -84,9 +83,8 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
@@ -136,11 +134,8 @@ struct returnData{
 /* ------ functions ------ */
 
 float getLightmap(in float lightmap) {
-    lightmap = 1-clamp(lightmap*1.1, 0.0, 1.0);
-    lightmap *= 5.0;
-    lightmap = 1.0 / pow2(lightmap+0.1);
-    lightmap = sstep(lightmap, 0.025, 1.0);
-    return lightmap;
+    lightmap = linStep(lightmap, 1.0/24.0, 14.0/16.0);
+    return pow3(lightmap);
 }
 vec3 artificialLight() {
     float lightmap      = getLightmap(scene.lightmap.x);
@@ -188,13 +183,12 @@ vec4 inputSample        = texture(tex, coord);
 
     sdata.result        = vec3(0.0);
 
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth, gl_FragCoord.xy/vec2(viewWidth, viewHeight));
+    pos.world       = toWorldpos(pos.view);
 
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
 
     light.sky       = colSkylight*skylightLuma;
     light.artificial = lightColor*lightLuma;

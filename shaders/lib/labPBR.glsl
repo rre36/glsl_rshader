@@ -72,7 +72,11 @@ void getLabNormal() {
 				tangent.y, binormal.y, nrm.y,
 				tangent.z, binormal.z, nrm.z);
 
-    normal  = normalize(texnormal*tbnMatrix);
+    #ifdef translucentPass
+        scene.normal  = normalize(texnormal*tbnMatrix);
+    #else
+        normal  = normalize(texnormal*tbnMatrix);
+    #endif
 }
 
 void getLabPbr() {
@@ -80,16 +84,21 @@ void getLabPbr() {
     pbr.roughness   = 1.0-texsample.r;
     pbr.roughness   = max(pbr.roughness, 0.02);
     pbr.f0          = pow2(clamp(texsample.g, 0.0, 229.0/255.0));
+
+    #ifndef translucentPass
     pbr.porosity    = int(texsample.b*255.0)<65 ? linStep(texsample.b, 0, 64.0/255.0) : 0.0;
+    #endif
 
     #ifdef s_useTexEmission
         pbr.emission    = int(texsample.a*255.0)<255 ? texsample.a : 0.0;
         emissiveTex    += pbr.emission;
     #endif
 
+    #ifndef translucentPass
     roughness       = pbr.roughness;
     metalness       = remapMetals(int(texsample.g*255.0));
     specularity     = pbr.f0;
+    #endif
 
     #if (defined s_useNormal && defined s_useTexAO)
         ao *= saturate(pbr.ao);

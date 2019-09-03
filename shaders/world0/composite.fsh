@@ -3,9 +3,6 @@
 #include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
 
-const float sunlightLuma        = 5.5;
-const float skylightLuma        = 0.1;
-
 /* ------ uniforms ------ */
 
 uniform sampler2D colortex0;
@@ -35,10 +32,6 @@ uniform float eyeAltitude;
 
 uniform ivec2 eyeBrightnessSmooth;
 
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
-uniform vec3 upPosition;
-uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
 
 uniform vec3 skyColor;
@@ -95,12 +88,8 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 sun;
-    vec3 moon;
-    vec3 light;
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
@@ -115,13 +104,11 @@ struct vectorData {
 struct lightData {
     vec3 sun;
     vec3 sky;
-    float vDotL;
 } light;
 
 vec3 returnCol  = vec3(0.0);
 bool translucency = false;
 float cloudAlpha = 0.0;
-
 
 /* ------ includes ------ */
 
@@ -139,87 +126,35 @@ vec3 unpackNormal(vec3 x) {
     return x*2.0-1.0;
 }
 
-vec3 skyGradientC() {
-    vec3 nFrag      = -normalize(screenSpacePos(depth.depth).xyz);
-    vec3 hVec       = normalize(-vec.up+nFrag);
-    vec3 hVec2      = normalize(vec.up+nFrag);
-    vec3 sgVec      = normalize(vec.sun+nFrag);
-    vec3 mgVec      = normalize(vec.moon+nFrag);
-
-    float hTop      = dot(hVec, nFrag);
-    float hBottom   = dot(hVec2, nFrag);
-
-    float horizonFade = linStep(hBottom, 0.3, 0.8);
-        horizonFade = pow4(horizonFade)*0.75;
-
-    float lowDome   = linStep(hBottom, 0.66, 0.71);
-        lowDome     = pow3(lowDome);
-
-    float horizonGrad = 1.0-max(hBottom, hTop);
-
-    float horizon   = linStep(horizonGrad, 0.12, 0.31);
-        horizon     = pow5(horizon)*0.8;
-
-    float sunGrad   = 1.0-dot(sgVec, nFrag);
-    float moonGrad  = 1.0-dot(mgVec, nFrag);
-
-    float horizonGlow = saturate(pow2(sunGrad));
-        horizonGlow = pow3(linStep(horizonGrad, 0.08-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
-        horizonGlow = pow2(horizonGlow*1.3);
-        horizonGlow = saturate(horizonGlow*0.75);
-
-    float sunGlow   = linStep(sunGrad, 0.5, 0.98);
-        sunGlow     = pow5(sunGlow);
-        sunGlow    *= 1.0-timeNoon*0.8;
-
-    float moonGlow  = pow(moonGrad*0.85, 15.0);
-        moonGlow    = saturate(moonGlow*1.05)*0.8;
-
-    vec3 sunColor   = colSunglow*2;
-    vec3 sunLight   = colSunlight;
-    vec3 moonColor  = vec3(0.55, 0.75, 1.0)*0.1;
-
-    vec3 sky        = mix(colSky, colHorizon, horizonFade);
-        sky         = mix(sky, colHorizon, horizon);
-        sky         = mix(sky, colHorizon, lowDome);
-        sky         = mix(sky, sunColor, saturate(sunGlow+horizonGlow)*(1.0-timeNight));
-        sky         = mix(sky, moonColor, moonGlow*timeNight);
-
-    return sky*3;
-}
+#include "/lib/nature/getSky.glsl"
 
 void simpleFog() {
     float falloff   = saturate(length(pos.world.xyz-pos.camera)/far);
-        falloff     = linStep(falloff, s_fogStart*(1.0-timeSunrise*0.5), 0.999);
+        falloff     = linStep(falloff, s_fogStart, 0.999);
         falloff     = pow(falloff, s_fogExp);
     
-    vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;
-/*
-    #ifdef MC_GL_RENDERER_GEFORCE
-        skyCol += 1.0/255.0;
-    #endif
-*/
+    vec3 skyCol     = falloff>0.0 ? getSky(vec.view) : colHorizon;
+
     returnCol       = mix(returnCol, skyCol, falloff);
 }
-
 void simpleFogEyeInWater() {
-    vec3 wPosSolid  = worldSpacePos(depth.solid).xyz;
-    vec3 wPos       = pos.world.xyz;
+    vec3 wPosSolid  = getWorldpos(depth.solid);
+    vec3 wPos       = pos.world;
     float solidDistance = length(wPosSolid-pos.camera)/(far*0.8);
     float transDistance  = length(wPos-pos.camera)/(far*0.8);
     
     float falloff   = saturate(solidDistance-transDistance);
-        falloff     = linStep(falloff, s_fogStart*(1.0-timeSunrise*0.5), 0.999);
+        falloff     = linStep(falloff, 0.35, 0.999);
         falloff     = pow2(falloff);
     
-    vec3 skyCol     = falloff>0.0 ? skyGradientC() : colHorizon;
+    vec3 skyCol     = falloff>0.0 ? getSky(vec.view) : colHorizon;
 
     returnCol       = mix(returnCol, skyCol, falloff);
 }
 
 void underwaterFog() {
-    vec3 wPosSolid  = worldSpacePos(depth.solid).xyz;
-    vec3 wPos       = pos.world.xyz;
+    vec3 wPosSolid  = getWorldpos(depth.solid).xyz;
+    vec3 wPos       = pos.world;
 
     float solidDistance = length(wPosSolid-pos.camera)/far16;
     float transDistance  = length(wPos-pos.camera)/far16;
@@ -229,7 +164,7 @@ void underwaterFog() {
         falloff     = linStep(falloff, 0.0, 0.2);
         falloff     = 1.0-pow2(1.0-falloff);
 
-    vec3 fogCol     = (colSunlight*sunlightLuma+colSkylight*0.1)*vec3(0.1, 0.4, 1.0)*0.05;
+    vec3 fogCol     = (colSunlight*sunlightLuma+colSkylight*0.1)*vec3(0.1, 0.4, 1.0)*0.1;
 
     float caveFix   = isEyeInWater==1 ? 1.0 : linStep(eyeBrightnessSmooth.y/240.0, 0.0, 0.5);
     
@@ -237,15 +172,17 @@ void underwaterFog() {
 }
 
 void applyTranslucents() {
-    vec4 translucents   = texture(colortex6, coord)*vec4(vec3(50.0), 1.0);
-    if (eyeAltitude > (s_vcAltitude-s_vcThickness/2)) translucents.a *= 1.0-cloudAlpha;
+    vec4 translucents   = texture(colortex6, coord)*vec4(vec3(20.0), 1.0);
+
     if (translucency) {
         vec3 translucentColor = saturate(normalize(translucents.rgb));
             translucentColor = mix(vec3(1.0), translucentColor, translucents.a);
         returnCol *= translucentColor;
     }
+    
     returnCol       = mix(returnCol, translucents.rgb, translucents.a);
 }
+
 
 float c_miePhase(float x) {
     float mie1  = mie(x, 0.8*0.8);
@@ -378,7 +315,7 @@ void vcloud(inout vec3 scenecol) {
         float transmittance = 1.0;
         float cloud     = 0.0;
         float fade      = 1.0;
-        float vDotL     = light.vDotL;
+        float vDotL     = dot(vec.view, vec.light);
 
         vec3 sunlight   = mix(mix(colSunglow, vec3(0.0, 0.4, 1.0)*0.01, timeNight)*60.0, light.sky*30.5, timeLightTransition);
             sunlight   *= mix(vec3(1.0), vec3(1.1, 0.4, 0.3), (timeSunrise+timeSunset*0.7)*(1.0-rainStrength));
@@ -430,54 +367,25 @@ void main() {
 
     translucency = depth.solid>depth.depth;
 
-    pos.sun         = sunPosition;
-    pos.moon        = moonPosition;
-    pos.light       = shadowLightPosition;
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth);
+    pos.world       = toWorldpos(pos.view);
 
     vec.sun         = sunVector;
     vec.moon        = moonVector;
     vec.light       = lightVector;
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
-
-    light.sun       = colSunlight*sunlightLuma;
-    light.sun       = mix(light.sun, vec3(vec3avg(light.sun))*0.15, rainStrength*0.95);
-    light.sky       = mix(colSkylight, colSky*1.2, 0.66)*skylightLuma;
-    light.sky       = mix(light.sky, vec3(vec3avg(light.sky))*0.4, rainStrength*0.95);
-    light.vDotL     = dot(vec.view, vec.light);
+    vec.view        = normalize(pos.view);
 
     returnCol       = scene.albedo;
 
-    bool water = pbr.roughness < 0.01;
+    bool water = pbr.roughness < 0.006;
 
     #if s_cloudMode==0
         pcloud();
-    #endif
-
-    #if s_cloudMode==1
+    #elif s_cloudMode==1
         vcloud(returnCol);
     #endif
-
-    #ifdef s_godrays
-        vec4 translucentsample = texture(colortex6, coord);
-
-        vec3 godrayColor    = mix(normalize(translucentsample.rgb), vec3(1.0), translucentsample.a);
-            if (!translucency) godrayColor = vec3(1.0);
-
-        float godrayAlpha = 1.0-float(mask.terrain);
-            godrayAlpha *= 1.0-saturate(cloudAlpha);
-            godrayAlpha *= 1.0-translucentsample.a;
-
-        vec3 return6    = vec3(godrayAlpha)*godrayColor;
-    #else
-        vec3 return6 = vec3(0.0);
-    #endif
-
-    if (scene.sample3.r>0.75 && scene.sample3.r<0.95) returnCol *= 1.0-saturate(cloudAlpha)*0.9;
 
     if (isEyeInWater==0 && (mask.terrain || translucency)) {
         if (water) underwaterFog();
@@ -493,6 +401,22 @@ void main() {
         underwaterFog();
     }
 
+    if (scene.sample3.r>0.75 && scene.sample3.r<0.95) returnCol *= 1.0-saturate(cloudAlpha)*0.9;
+
+    #ifdef s_godrays
+        vec4 translucentsample = texture(colortex6, coord);
+
+        vec3 godrayColor    = mix(normalize(translucentsample.rgb), vec3(1.0), translucentsample.a);
+            if (!translucency) godrayColor = vec3(1.0);
+
+        float godrayAlpha = 1.0-float(mask.terrain);
+            godrayAlpha *= 1.0-saturate(cloudAlpha);
+            godrayAlpha *= 1.0-translucentsample.a;
+
+        vec3 return6    = vec3(godrayAlpha)*godrayColor;
+    #else
+        vec3 return6 = vec3(0.0);
+    #endif
 
     /*DRAWBUFFERS:06*/
     gl_FragData[0]  = makeSceneOutput(returnCol);

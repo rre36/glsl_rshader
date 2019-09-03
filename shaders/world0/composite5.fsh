@@ -1,9 +1,8 @@
 #version 400 compatibility
-#define DIM -1
 #include "/lib/util/math.glsl"
 #include "/lib/global.glsl"
 
-const float bloomIntensity  = 0.12;
+const float bloomIntensity  = 0.1;
 
 uniform sampler2D colortex0;    //scene color
 uniform sampler2D colortex4;

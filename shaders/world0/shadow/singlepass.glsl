@@ -1,15 +1,11 @@
-#version 400 compatibility
 #include "/lib/global.glsl"
-#include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
 
-const float shadowIllumination  = 0.0;
-const float sunlightLuma        = 5.5;
-const float skylightLuma        = 0.1;
-const float minLight            = 0.007;
+const float minLight            = 0.01;
 const vec3 minLightColor        = vec3(0.8, 0.9, 1.0);
-const float lightLuma           = 2.0;
-const vec3 lightColor           = vec3(1.0, 0.26, 0.0);
+const float lightLuma           = 1.0;
+const vec3 lightColor           = vec3(1.0, 0.42, 0.0);
+
 
 /* ------ uniforms ------ */
 
@@ -18,9 +14,20 @@ uniform sampler2D colortex1;
 uniform sampler2D colortex2;
 uniform sampler2D colortex3;
 uniform sampler2D colortex4;
-uniform sampler2D colortex5;
 
 uniform sampler2D depthtex1;
+
+const bool shadowHardwareFiltering = true;
+
+uniform sampler2DShadow shadowtex0;
+uniform sampler2DShadow shadowtex1;
+
+uniform sampler2DShadow shadowcolor0;
+
+uniform mat4 shadowModelView;
+uniform mat4 shadowModelViewInverse;
+uniform mat4 shadowProjection;
+uniform mat4 shadowProjectionInverse;
 
 uniform int frameCounter;
 
@@ -33,10 +40,6 @@ uniform float viewHeight;
 uniform float rainStrength;
 uniform float wetness;
 
-uniform vec3 sunPosition;
-uniform vec3 moonPosition;
-uniform vec3 upPosition;
-uniform vec3 shadowLightPosition;
 uniform vec3 cameraPosition;
 
 uniform mat4 gbufferModelView;
@@ -84,12 +87,8 @@ struct depthData {
 } depth;
 
 struct positionData {
-    vec3 sun;
-    vec3 moon;
-    vec3 light;
-    vec3 up;
     vec3 camera;
-    vec3 screen;
+    vec3 view;
     vec3 world;
 } pos;
 
@@ -102,17 +101,16 @@ struct vectorData {
 } vec;
 
 struct shadingData {
-    float direct;
+    float diffuse;
+    float shadow;
     float specular;
     float ao;
-    float cave;
-    float lightmap;
+    float lit;
+    float vanillaAo;
 
-    vec3 color;
-    vec3 indirect;
-    vec3 skylight;
-
+    vec3 shadowcolor;
     vec3 result;
+    vec3 indirect;
 } sdata;
 
 struct lightData {
@@ -135,9 +133,20 @@ vec3 returnCol  = vec3(0.0);
 #include "/lib/util/taaJitter.glsl"
 #include "/lib/util/encode.glsl"
 
+
+/* ------ functions ------ */
+
 vec3 unpackNormal(vec3 x) {
     return x*2.0-1.0;
 }
+
+#include "diffGGX.glsl"
+
+#include "core.glsl"
+
+#ifdef setAmbientOcclusion
+    #include "/lib/shadow/dbao.glsl"
+#endif
 
 float getLightmap(in float lightmap) {
     lightmap = linStep(lightmap, 1.0/24.0, 14.0/16.0);
@@ -151,17 +160,17 @@ vec3 artificialLight() {
 }
 
 void applyShading() {
-    sdata.lightmap      = sstep(scene.lightmap.y, 0.15, 0.95);
-    sdata.cave          = 1.0-sstep(scene.lightmap.y, 0.2, 0.5);
+    float lightmap      = sstep(scene.lightmap.y, 0.15, 0.95);
+    float cave          = 1.0-sstep(scene.lightmap.y, 0.2, 0.5);
 
-    vec3 indirectLight  = mix(sdata.skylight, light.sun, saturate(max(s_shadowLuminance, rainStrength*0.3)));
-        indirectLight   = mix(indirectLight, minLightColor*minLight, sdata.cave);
+    vec3 indirectLight  = mix(light.sky*lightmap, light.sun, saturate(s_shadowLuminance));
+        indirectLight   = mix(indirectLight, minLightColor*minLight, cave);
 
-        indirectLight  += light.sun*sdata.indirect*(1.0-sdata.direct);
+        indirectLight  += light.sun*sdata.indirect*(1.0-sdata.lit);
 
     vec3 artificial     = scene.lightmap.x > 0.01 ? artificialLight() : vec3(0.0);
 
-    vec3 directLight    = mix(indirectLight, light.sun*sdata.color, sdata.direct*(1.0-timeLightTransition));
+    vec3 directLight    = indirectLight+light.sun*sdata.shadowcolor*sdata.lit*finv(timeLightTransition);
         directLight     = bLighten(directLight, artificial);
 
     vec3 metalCol       = scene.albedo*normalize(scene.albedo);
@@ -172,8 +181,8 @@ void applyShading() {
 
     sdata.result        = directLight*sdata.ao;
     returnCol          *= sdata.result;
-    vec3 specular       = sdata.specular*light.sun*sdata.direct*mix(vec3(1.0), metalCol, isMetal);
-    returnCol          += specular*sdata.color;
+    vec3 specular       = sdata.specular*light.sun*sdata.lit*mix(vec3(1.0), metalCol, isMetal);
+    returnCol          += specular*sdata.shadowcolor;
 
     returnCol          += metalCol*isMetal*sdata.result;
 }
@@ -184,33 +193,30 @@ void main() {
     scene.sample2   = texture(colortex2, coord);
     scene.lightmap  = scene.sample2.rg;
     scene.sample3   = texture(colortex3, coord);
+    float sample4   = texture(colortex4, coord).a;
 
     decodeData();
 
     depth.depth     = texture(depthtex1, coord).x;
     depth.linear    = depthLin(depth.depth);
 
-    pos.sun         = sunPosition;
-    pos.moon        = moonPosition;
-    pos.light       = shadowLightPosition;
-    pos.up          = upPosition;
     pos.camera      = cameraPosition;
-    pos.screen      = screenSpacePos(depth.depth);
-    pos.world       = worldSpacePos(depth.depth);
+    pos.view        = getViewpos(depth.depth);
+    pos.world       = toWorldpos(pos.view);
 
     vec.sun         = sunVector;
     vec.moon        = moonVector;
     vec.light       = lightVector;
     vec.up          = upVector;
-    vec.view        = normalize(pos.screen).xyz;
+    vec.view        = normalize(pos.view);
 
-    sdata.direct        = 1.0;
+    sdata.shadow        = 1.0;
+    sdata.diffuse       = 1.0;
     sdata.indirect      = vec3(0.0);
     sdata.ao            = 1.0;
     sdata.specular      = 0.0;
-    sdata.color         = vec3(1.0);
-    sdata.skylight      = vec3(0.0);
-    sdata.result        = vec3(0.0);
+    sdata.shadowcolor   = vec3(1.0);
+    sdata.vanillaAo     = flatten(pow2(sample4), 0.85);
 
     returnCol           = scene.albedo;
 
@@ -221,28 +227,29 @@ void main() {
         light.sky       = mix(light.sky, vec3(vec3avg(light.sky))*0.4, rainStrength*0.95);
         light.artificial = lightColor*lightLuma;
 
-        vec3 sample5    = texture(colortex5, coord).rgb;
-        sdata.direct    = sample5.r;
-        sdata.specular  = sample5.g*8.0;
 
-        sdata.color     = decodeV3(scene.sample3.a);
+        float worldDistance = length(pos.world.xyz-pos.camera.xyz);
+        float falloff       = 1.0-pow2(linStep(worldDistance, 100.0, 160.0));
 
-        vec4 sample4    = texture(colortex4, coord);
+        if (scene.sample3.r>0.26 && scene.sample3.r<0.28) sdata.diffuse = 1.0;
+        else diffuseLambert(scene.normal);
 
-        sdata.ao        = sample4.a;
-        //sdata.indirect  = sample4.rgb;
-        sdata.skylight  = light.sky;
+        getDirectLight(sdata.diffuse>0.01);
+
+        sdata.lit       = min(sdata.shadow, sdata.diffuse);
+
+        if (sdata.lit>0.01) specGGX(scene.normal);
+        sdata.specular *= sdata.lit;
+        
+        #ifdef setAmbientOcclusion
+            dbao(falloff);
+        #endif
+
+        sdata.ao    *= sdata.vanillaAo;
 
         applyShading();
     }
 
-    if (mat.beacon) {
-        vec3 beaconCol  = mix(light.sun, light.sky, timeLightTransition);
-        float luma      = vec3avg(beaconCol);
-        returnCol       = scene.albedo*max(luma, 1.0);
-    }
-
-    //returnCol   = light.sun;
     /*DRAWBUFFERS:03*/
     gl_FragData[0]  = makeSceneOutput(returnCol);
     gl_FragData[1]  = vec4(scene.sample3.r, encodeV3(scene.albedo), scene.sample3.b, 1.0);

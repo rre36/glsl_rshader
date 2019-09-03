@@ -1,4 +1,5 @@
 #version 400 compatibility
+#define DIM -1
 #include "/lib/util/math.glsl"
 #include "/lib/global.glsl"
 
@@ -6,7 +7,7 @@
 const bool colortex0MipmapEnabled = true;
 #endif
 
-float bloomThreshold    = 5.0;
+float bloomThreshold    = 1.0;
 
 uniform sampler2D colortex0;    //scene color
 uniform sampler2D colortex3;    //scene material masks

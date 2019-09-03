@@ -1,4 +1,5 @@
 #version 400 compatibility
+#define DIM -1
 #include "/lib/global.glsl"
 #include "/lib/buffer.glsl"
 #include "/lib/util/math.glsl"
