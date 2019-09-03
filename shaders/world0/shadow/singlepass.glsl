@@ -170,7 +170,7 @@ void applyShading() {
 
     vec3 artificial     = scene.lightmap.x > 0.01 ? artificialLight() : vec3(0.0);
 
-    vec3 directLight    = indirectLight+light.sun*sdata.shadowcolor*sdata.lit*finv(timeLightTransition);
+    vec3 directLight    = indirectLight+light.sun*sdata.shadowcolor*sdata.lit*finv(timeLightTransition)*finv(s_shadowLuminance);
         directLight     = bLighten(directLight, artificial);
 
     vec3 metalCol       = scene.albedo*normalize(scene.albedo);
