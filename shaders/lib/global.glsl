@@ -60,7 +60,7 @@ const float shadowDistance      = 128.0;
 #define setWindEffect
 
 #define setBloom
-//#define setMotionblur
+#define setMotionblur
 #define temporalAA
 #define expMethod 0     //[0 1 2 3] 0-temporal 1-non temporal 2-legacy 3-manual
 #define expMinimum 0.0005

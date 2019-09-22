@@ -1,5 +1,5 @@
 option.INFO=RRe36's Shader
-value.INFO.0=v10.0
+value.INFO.0=v11.0
 
 option.shadowMapResolution=Shadow Resolution
 option.s_shadowLuminance=Shadow Illumination
@@ -9,6 +9,13 @@ option.setAOQuality=Ambient Occlusion Quality
 value.setAOQuality.0=Low
 value.setAOQuality.1=Medium
 value.setAOQuality.2=High
+
+option.s_torchlight=Torchlight Color
+option.s_torchlight.comment=Idk how to call the profiles to excuse the weird names
+value.s_torchlight.0=Very Warm
+value.s_torchlight.1=Warm
+value.s_torchlight.2=Warm-ish
+value.s_torchlight.3=Warm White
 
 screen.cloud=Clouds
 
