@@ -27,7 +27,7 @@ const int noiseTextureResolution = 256;
 
 in vec2 coord;
 
-flat in mat4x3 light_color;
+flat in mat4x3 lightColor;
 flat in mat2x3 sky_color;
 
 //uniform sampler2D colortex0;
@@ -39,6 +39,7 @@ uniform sampler2D depthtex1;
 
 uniform sampler2D noisetex;
 
+uniform float cloudLightFade;
 uniform float eyeAltitude;
 uniform float frameTimeCounter;
 uniform float wetness;
@@ -107,15 +108,15 @@ float fbm(vec3 pos, vec3 offset, const float persistence, const float scale, con
 }
 
 float cloud_mie_dumb(float cos_theta, float g) {
-    float sqG   = pow2(g);
+    float sqG   = sqr(g);
     float a     = (1.0-sqG) / (2.0 + sqG);
-    float b     = (1.0 + pow2(cos_theta)) / (1.0 + sqG - 2.0*g*cos_theta);
+    float b     = (1.0 + sqr(cos_theta)) / (1.0 + sqG - 2.0*g*cos_theta);
 
     return max(1.5 * a*b + g*cos_theta, 0.0)*rcp(pi);
 }
 float cloud_mie(float x, float g) {
-    float mie   = 1.0 + pow2(g) - 2.0*g*x;
-        mie     = (1.0 - pow2(g)) / ((4.0*pi) * mie*(mie*0.5+0.5));
+    float mie   = 1.0 + sqr(g) - 2.0*g*x;
+        mie     = (1.0 - sqr(g)) / ((4.0*pi) * mie*(mie*0.5+0.5));
     return mie;
 }
 
@@ -154,7 +155,7 @@ void compute_vc(out mat2x4 data, in vec3 wvec, vec3 skycol, vec3 wpos, bool terr
         float stepl     = length((epos-spos)/vcloud_samples);
         float stepcoeff = stepl/bl;
             stepcoeff   = 0.45+clamp(stepcoeff-1.1, 0.0, 4.0)*0.5;
-            stepcoeff   = mix(stepcoeff, 6.0, pow2(within));
+            stepcoeff   = mix(stepcoeff, 6.0, sqr(within));
         int steps       = int(vcloud_samples*stepcoeff);
 
         vec3 rstep  = (epos-spos)/steps;
@@ -166,7 +167,8 @@ void compute_vc(out mat2x4 data, in vec3 wvec, vec3 skycol, vec3 wpos, bool terr
         float fade      = 0.0;
         float fdist     = vcloud_clip + 1.0;
 
-        vec3 sunlight   = (worldTime>23000 || worldTime<12900) ? light_color[0] : light_color[3];
+        vec3 sunlight   = (worldTime>23000 || worldTime<12900) ? lightColor[0] * mix(vec3(1.0, 0.3, 0.1), vec3(1.0), sqr(cloudLightFade)) : lightColor[3];
+            sunlight   *= cubeSmooth(cloudLightFade);
         vec3 skylight   = sky_color[0] * 0.5;
 
         float vdotl     = dot(wvec, cloud_lvec);
@@ -246,7 +248,7 @@ void compute_vc(out mat2x4 data, in vec3 wvec, vec3 skycol, vec3 wpos, bool terr
         /*
         fade    = linStep(fdist, 0.75 * vcloud_clip, 0.99 * vcloud_clip);
         fade    = saturate(1.0-fade);
-        fade    = pow2(fade);*/
+        fade    = sqr(fade);*/
 
         const vec3 extinct_coeff = vec3(3e-4);
 

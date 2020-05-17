@@ -30,7 +30,7 @@ const bool shadowHardwareFiltering = true;
 
 in vec2 coord;
 
-flat in mat3x3 light_color;
+flat in mat3x3 lightColor;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
@@ -127,13 +127,13 @@ vec3 get_light(vec3 scenecol, vec3 normal, vec3 viewpos, vec2 lmap, float ao, in
     get_ldirect(shadow, shadowcol, diff>0.0, viewpos);
 
     float diff_lit  = min(diff, shadow);
-    vec3 direct_col     = light_color[0];
+    vec3 direct_col     = lightColor[0];
     vec3 direct_light   = diff_lit*shadowcol*direct_col;
-    vec3 indirect_light = light_color[1];
+    vec3 indirect_light = lightColor[1];
         indirect_light *= ao;
 
     vec3 result     = direct_light + indirect_light;
-        result     += get_lblock(light_color[2], lmap.x)*ao;
+        result     += get_lblock(lightColor[2], lmap.x)*ao;
 
     return scenecol * result;
 }
@@ -183,7 +183,7 @@ void main() {
 
         vec3 viewpos    = screen_viewspace(vec3(coord, scenedepth));
 
-        float ao        = pow2(scenecol.a)*0.66+0.34;
+        float ao        = sqr(scenecol.a)*0.66+0.34;
 
         #ifdef ambientOcclusion_enabled
             vec4 tex3   = textureBilateral(colortex3, depthtex1, 2, scenedepth);
@@ -193,7 +193,7 @@ void main() {
         scenecol.rgb    = get_light(scenecol.rgb, scenenormal, viewpos, scenelmap, ao, matID);
 
         #if DEBUG_VIEW==2
-        scenecol.rgb    = ao * (sunAngle<0.5 ? light_color[0] : light_color[3]);
+        scenecol.rgb    = ao * (sunAngle<0.5 ? lightColor[0] : lightColor[3]);
         #endif
     }
 

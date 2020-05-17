@@ -185,7 +185,7 @@ void main() {
 
     if(mask.terrain) {
         float worldDistance = length(pos.world.xyz-pos.camera.xyz);
-        float falloff       = 1.0-pow2(linStep(worldDistance, 100.0, 160.0));
+        float falloff       = 1.0-sqr(linStep(worldDistance, 100.0, 160.0));
 
         #ifdef setAmbientOcclusion
             dbao(falloff);

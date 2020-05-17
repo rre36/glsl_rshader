@@ -22,9 +22,9 @@ vec3 getSky(in vec3 viewvec) {
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
 
-    float horizonGlow = saturate(pow2(sunGrad));
+    float horizonGlow = saturate(sqr(sunGrad));
         horizonGlow = pow3(linStep(horizonGrad, 0.08-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
-        horizonGlow = pow2(horizonGlow*1.3);
+        horizonGlow = sqr(horizonGlow*1.3);
         horizonGlow = saturate(horizonGlow*0.75);
 
     float sunGlow   = linStep(sunGrad, 0.5, 0.98);

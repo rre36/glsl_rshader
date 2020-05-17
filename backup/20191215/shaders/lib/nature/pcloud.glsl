@@ -34,7 +34,7 @@ float vc_shape(in vec3 pos) {
     float highFade  = 1.0-sstep(pos.y, vc_highEdge-vc_thickness*0.1, vc_highEdge);
 
     float lowCov    = 1.0-sstep(pos.y, vc_lowEdge, vc_altitude-vc_thickness*0.15);
-        lowCov      = pow2(lowCov);
+        lowCov      = sqr(lowCov);
     float highCov   = sstep(pos.y, vc_lowEdge+vc_thickness*0.2, vc_highEdge);
 
         shape      -= lowCov*0.4;

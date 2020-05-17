@@ -146,7 +146,7 @@ void simpleFog() {
     
     float falloff   = saturate(length(pos.world.xyz-pos.camera)/far);
         falloff     = linStep(falloff, 0.35, 0.999);
-        falloff     = pow2(falloff);
+        falloff     = sqr(falloff);
     
     vec3 skyCol     = falloff>0.0 ? skyGradient() : fogVanilla;
 
@@ -162,7 +162,7 @@ void simpleFogEyeInWater() {
     
     float falloff   = saturate(solidDistance-transDistance);
         falloff     = linStep(falloff, 0.35, 0.999);
-        falloff     = pow2(falloff);
+        falloff     = sqr(falloff);
     
     vec3 skyCol     = falloff>0.0 ? skyGradient() : fogVanilla;
 

@@ -38,7 +38,7 @@ flat in int mat_id;
 
 flat in vec3 normal;
 
-flat in mat3x3 light_color;
+flat in mat3x3 lightColor;
 
 uniform sampler2D gcolor;
 
@@ -118,13 +118,13 @@ vec3 get_light(vec3 scenecol, vec3 normal, vec2 lmap, float ao) {
     get_ldirect(shadow, shadowcol, diff>0.0);
 
     float diff_lit  = min(diff, shadow);
-    vec3 direct_col     = light_color[0];
+    vec3 direct_col     = lightColor[0];
     vec3 direct_light   = diff_lit*shadowcol*direct_col;
-    vec3 indirect_light = light_color[1];
+    vec3 indirect_light = lightColor[1];
         indirect_light *= ao;
 
     vec3 result     = direct_light + indirect_light;
-        result     += get_lblock(light_color[2], lmap.x)*ao;
+        result     += get_lblock(lightColor[2], lmap.x)*ao;
 
     return scenecol * result;
 }

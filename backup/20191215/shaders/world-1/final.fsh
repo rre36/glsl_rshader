@@ -44,7 +44,7 @@ void autoExposureLegacy() {
     float eyeLight = eyeBrightnessSmooth.x*0.7;
     float imageLuma = max(eyeSkylight, eyeLight);
         imageLuma /= 240.0;
-        imageLuma = pow2(imageLuma)*expMax;
+        imageLuma = sqr(imageLuma)*expMax;
         imageLuma = clamp(imageLuma, expMin, expMax); 
     scene.exposure = 1.0 - exp(-1.0/imageLuma);
 }

@@ -64,7 +64,7 @@ void main() {
         if (windLod) {
             bool topvert    = (gl_MultiTexCoord0.t < mc_midTexCoord.t);
 
-            float occlude   = pow2(coord[1].y)*0.9+0.1;
+            float occlude   = sqr(coord[1].y)*0.9+0.1;
 
             if (mc_Entity.x == 10021 || (mc_Entity.x == 10022 && topvert) || (mc_Entity.x == 10023 && topvert) || mc_Entity.x == 10024) {
                 vec2 wind_offset = wind_effect(pos.xyz + cameraPosition, 0.18, 1.0)*occlude;

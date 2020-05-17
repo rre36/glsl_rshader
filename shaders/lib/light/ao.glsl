@@ -93,7 +93,7 @@ vec3 viewspace_screenspace(vec3 pos) {
 }
 
 float calculate_ssao(sampler2D depthtex, vec3 viewpos, vec3 viewnormal, float dither) {
-    const float dither_size = cpow2(32.0) * 16.0;
+    const float dither_size = csqr(32.0) * 16.0;
         dither *= dither_size;
     float result    = 0.0;
 

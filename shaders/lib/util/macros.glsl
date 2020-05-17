@@ -42,7 +42,7 @@
 #define isnan4(a) (isnan(a.x) || isnan(a.y) || isnan(a.z) || isnan(a.w))
 #define isinf4(a) (isinf(a.x) || isinf(a.y) || isinf(a.z) || isinf(a.w))
 
-#define cpow2(x) (x * x)
+#define csqr(x) (x * x)
 
 //#define max3f(x, y, z) max(x, max(y, z))
 

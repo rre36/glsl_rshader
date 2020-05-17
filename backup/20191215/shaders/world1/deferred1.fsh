@@ -171,7 +171,7 @@ void diffuseLambert(in vec3 normal) {
 }
 
 void specGGX(in vec3 normal) {
-    float roughness = pow2(pbr.roughness);
+    float roughness = sqr(pbr.roughness);
     #ifdef s_usePBR
         float F0        = pbr.f0;
     #else
@@ -330,7 +330,7 @@ void main() {
     sdata.ao            = 1.0;
     sdata.specular      = 0.0;
     sdata.shadowcolor   = vec3(1.0);
-    sdata.vanillaAo     = flatten(pow2(sample4), 0.85);
+    sdata.vanillaAo     = flatten(sqr(sample4), 0.85);
 
     returnCol           = scene.albedo;
 
@@ -343,7 +343,7 @@ void main() {
 
 
         float worldDistance = length(pos.world.xyz-pos.camera.xyz);
-        float falloff       = 1.0-pow2(linStep(worldDistance, 100.0, 160.0));
+        float falloff       = 1.0-sqr(linStep(worldDistance, 100.0, 160.0));
 
         getDirectLight(sdata.diffuse>0.01);
 

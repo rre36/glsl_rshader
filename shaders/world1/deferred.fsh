@@ -46,7 +46,7 @@ const int noiseTextureResolution = 256;
 
 in vec2 coord;
 
-flat in mat3x3 light_color;
+flat in mat3x3 lightColor;
 
 uniform sampler2D colortex0;
 uniform sampler2D depthtex1;

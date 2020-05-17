@@ -24,15 +24,15 @@ float rayleigh_phase(float cosTheta) {
 }
 
 float hg_mie(float cosTheta, float g) {
-    float mie   = 1.0 + pow2(g) - 2.0*g*cosTheta;
-        mie     = (1.0 - pow2(g)) / ((4.0*pi) * mie*(mie*0.5+0.5));
+    float mie   = 1.0 + sqr(g) - 2.0*g*cosTheta;
+        mie     = (1.0 - sqr(g)) / ((4.0*pi) * mie*(mie*0.5+0.5));
     return mie;
 }
 
 float cs_mie(float cosTheta, float g) {
   	float gg = g*g;
   	float p1 = 3.0 * (1.0 - gg) * rcp((pi * (2.0 + gg)));
-  	float p2 = (1.0 + pow2(cosTheta)) * rcp(pow((1.0 + gg - 2.0 * g * cosTheta), 3.0/2.0));
+  	float p2 = (1.0 + sqr(cosTheta)) * rcp(pow((1.0 + gg - 2.0 * g * cosTheta), 3.0/2.0));
   	float phase = p1 * p2;
   	phase *= rcp(pi*4);
   	return max(phase, 0.0);

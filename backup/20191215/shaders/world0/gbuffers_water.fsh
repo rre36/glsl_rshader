@@ -196,7 +196,7 @@ void diffuseLambert(in vec3 normal) {
 }
 
 void specGGX(in vec3 normal) {
-    float roughness = pow2(pbr.roughness);
+    float roughness = sqr(pbr.roughness);
     if (water==1) roughness = 0.00002;
     float F0        = 0.08;
     if (pbr.metallic>0.5) {
@@ -335,7 +335,7 @@ void getWaterNormal() {
     vec3 wNormalNoise;
         wNormalNoise.x  = -((hL-h0)+(h0-hR))/nrmSampleSize;
         wNormalNoise.y  = -((hU-h0)+(h0-hD))/nrmSampleSize;
-        wNormalNoise.z  = 1.0-pow2(wNormalNoise.x)-pow2(wNormalNoise.y);
+        wNormalNoise.z  = 1.0-sqr(wNormalNoise.x)-sqr(wNormalNoise.y);
 
     vec3 normal = wNormalNoise;
 

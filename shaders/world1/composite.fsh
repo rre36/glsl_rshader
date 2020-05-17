@@ -23,7 +23,7 @@
 
 in vec2 coord;
 
-flat in mat3x3 light_color;
+flat in mat3x3 lightColor;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex2;
@@ -115,23 +115,23 @@ void main() {
 
     bool water      = mat_id == 102;
 
-    vec3 translucent_albedo = pow2(decode3x8(tex2.g));
+    vec3 translucent_albedo = sqr(decode3x8(tex2.g));
     
     float dist0     = distance(spos0, gbufferModelViewInverse[3].xyz);
     float dist1     = distance(spos1, gbufferModelViewInverse[3].xyz);
 
     if (translucent && isEyeInWater==0){
-        if (water) scenecol.rgb = water_fog(scenecol.rgb, dist1-dist0, light_color[1]);
-        else if (landMask(scenedepth1)) scenecol.rgb = simple_fog(scenecol.rgb, dist1-dist0, light_color[1]);
+        if (water) scenecol.rgb = water_fog(scenecol.rgb, dist1-dist0, lightColor[1]);
+        else if (landMask(scenedepth1)) scenecol.rgb = simple_fog(scenecol.rgb, dist1-dist0, lightColor[1]);
     }
 
-    if (landMask(scenedepth1) && isEyeInWater==1 && translucent) scenecol.rgb = simple_fog(scenecol.rgb, dist1-dist0, light_color[1]);
+    if (landMask(scenedepth1) && isEyeInWater==1 && translucent) scenecol.rgb = simple_fog(scenecol.rgb, dist1-dist0, lightColor[1]);
 
     scenecol.rgb    = blend_translucencies(scenecol.rgb, tex3, translucent_albedo);
 
-    if (landMask(scenedepth0) && isEyeInWater==0) scenecol.rgb = simple_fog(scenecol.rgb, dist0, light_color[1]);
+    if (landMask(scenedepth0) && isEyeInWater==0) scenecol.rgb = simple_fog(scenecol.rgb, dist0, lightColor[1]);
 
-    if (isEyeInWater==1) scenecol.rgb = water_fog(scenecol.rgb, dist0, light_color[1]);
+    if (isEyeInWater==1) scenecol.rgb = water_fog(scenecol.rgb, dist0, lightColor[1]);
 
     if (mat_id == 3) {
         if (landMask(scenedepth0)) scenecol.rgb = scenecol.rgb*0.6 + vec3(0.5)*v3avg(scenecol.rgb);

@@ -197,7 +197,7 @@ vec4 inputSample        = texture(tex, coord);
 
     applyShading();
 
-    rdata.scene.a       = water == 1 ? pow2(inputSample.a) : inputSample.a;
+    rdata.scene.a       = water == 1 ? sqr(inputSample.a) : inputSample.a;
 
     /*DRAWBUFFERS:612*/
     gl_FragData[0] = makeSceneOutput(rdata.scene)*vec4(vec3(0.1), 1.0);

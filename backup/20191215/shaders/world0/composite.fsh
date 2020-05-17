@@ -145,7 +145,7 @@ void simpleFogEyeInWater() {
     
     float falloff   = saturate(solidDistance-transDistance);
         falloff     = linStep(falloff, 0.35, 0.999);
-        falloff     = pow2(falloff);
+        falloff     = sqr(falloff);
     
     vec3 skyCol     = falloff>0.0 ? getSky(vec.view) : colHorizon;
 
@@ -162,7 +162,7 @@ void underwaterFog() {
     float falloff   = isEyeInWater==1 ? transDistance : solidDistance-transDistance;
         falloff     = saturate(falloff);
         falloff     = linStep(falloff, 0.0, 0.2);
-        falloff     = 1.0-pow2(1.0-falloff);
+        falloff     = 1.0-sqr(1.0-falloff);
 
     vec3 fogCol     = (colSunlight*sunlightLuma+colSkylight*0.1)*vec3(0.1, 0.4, 1.0)*0.1;
 
@@ -261,7 +261,7 @@ void pcloud() {
 
     vec3 color          = mix(rayleighColor, lightColor, saturate(scatter));
 
-    cloud               = saturate(cloud*pow2(fadeFactor));
+    cloud               = saturate(cloud*sqr(fadeFactor));
     cloudAlpha          = cloud;
     returnCol           = mix(returnCol, color, cloud);
 }
@@ -346,8 +346,8 @@ void vcloud(inout vec3 scenecol) {
 
         vec3 color  = mix(skylight, sunlight, scatter);
         cloud               = saturate(cloud);
-        cloudAlpha          = pow2(cloud)*pow3(fade);
-        scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
+        cloudAlpha          = sqr(cloud)*pow3(fade);
+        scenecol            = mix(scenecol, color, sqr(cloud)*pow3(fade));
     }
 }
 #endif

@@ -23,11 +23,11 @@ void daytime() {
     float tLightTransition2 = ((clamp(timeVal, 0.94, 0.97)-0.94) / 0.03  + 1-(clamp(timeVal, 0.004, 0.03)-0.004) / 0.026);
     float tLightTransition = tLightTransition1+tLightTransition2;
 
-    timeSunrise = clamp(pow2(tSunrise), 0.0, 1.0);
-    timeNoon    = clamp(1-pow2(1-tNoon), 0.0, 1.0);
-    timeSunset  = clamp(pow2(tSunset), 0.0, 1.0);
-    timeNight   = clamp(1-pow2(1-tNight), 0.0, 1.0);
-    timeMoon    = clamp(pow2(tMoon), 0.0, 1.0);
-    timeLightTransition = (clamp(tLightTransition1, 0.0, 1.0)+clamp(pow2(tLightTransition2), 0.0, 1.0));
+    timeSunrise = clamp(sqr(tSunrise), 0.0, 1.0);
+    timeNoon    = clamp(1-sqr(1-tNoon), 0.0, 1.0);
+    timeSunset  = clamp(sqr(tSunset), 0.0, 1.0);
+    timeNight   = clamp(1-sqr(1-tNight), 0.0, 1.0);
+    timeMoon    = clamp(sqr(tMoon), 0.0, 1.0);
+    timeLightTransition = (clamp(tLightTransition1, 0.0, 1.0)+clamp(sqr(tLightTransition2), 0.0, 1.0));
     timeSun		= timeSunrise + timeNoon + timeSunset;
 }

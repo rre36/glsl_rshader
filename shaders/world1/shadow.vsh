@@ -87,7 +87,7 @@ void main() {
         if (windLod) {
             bool topvert    = (gl_MultiTexCoord0.t < mc_midTexCoord.t);
 
-            float occlude   = pow2(coord[1].y)*0.9+0.1;
+            float occlude   = sqr(coord[1].y)*0.9+0.1;
 
             if (mc_Entity.x == 10001) pos.y += water_wave(pos.xyz + cameraPosition, 0.55);
 

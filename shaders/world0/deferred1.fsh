@@ -32,7 +32,7 @@ in vec2 coord;
 
 flat in float light_flip;
 
-flat in mat4x3 light_color;
+flat in mat4x3 lightColor;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
@@ -153,18 +153,18 @@ void main() {
         get_ldirect(shadow, shadowcol, diff>0.0, viewpos);    //~3fps, almost for free
 
         float diff_lit  = min(diff, shadow);
-        vec3 direct_col     = sunAngle<0.5 ? light_color[0] : light_color[3];
+        vec3 direct_col     = sunAngle<0.5 ? lightColor[0] : lightColor[3];
         vec3 direct_light   = diff_lit*shadowcol*direct_col*light_flip;
-        vec3 indirect_light = lmap.y*light_color[1];
+        vec3 indirect_light = lmap.y*lightColor[1];
             indirect_light += vec3(0.5, 0.7, 1.0) * (0.04 * minlight_luma);
 
         vec3 result     = (direct_light + indirect_light) * ao;
-            result     += get_lblock(light_color[2], lmap.x)*ao;
+            result     += get_lblock(lightColor[2], lmap.x)*ao;
 
         scenecol.rgb   *= result;
 
         #if DEBUG_VIEW==2
-        scenecol.rgb    = ao * (sunAngle<0.5 ? light_color[0] : light_color[3]);
+        scenecol.rgb    = ao * (sunAngle<0.5 ? lightColor[0] : lightColor[3]);
         #endif
     }
 

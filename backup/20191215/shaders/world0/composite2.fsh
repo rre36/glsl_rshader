@@ -224,9 +224,9 @@ void godrays() {
     }
 
     float sDotU = dot(vec.sun, vec.up);
-    float svisible = pow2(clamp(sDotU+0.1, 0.0, 0.1)/0.1);
+    float svisible = sqr(clamp(sDotU+0.1, 0.0, 0.1)/0.1);
     float mDotU = dot(vec.moon, vec.up);
-    float mvisible = pow2(clamp(mDotU+0.1, 0.0, 0.1)/0.1);
+    float mvisible = sqr(clamp(mDotU+0.1, 0.0, 0.1)/0.1);
 
     const int samples = s_godraySamples;
 
@@ -234,7 +234,7 @@ void godrays() {
     vec3 sgVec      = normalize(sunVec+nFrag);
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float sunGlow   = linStep(sunGrad, 0.2, 0.98);
-        sunGlow     = pow2(sunGlow);
+        sunGlow     = sqr(sunGlow);
     
     if (sunGlow>0.0) {
         vec4 tpos   = vec4(sunPos, 1.0)*gbufferProjection;
@@ -244,7 +244,7 @@ void godrays() {
         float truepos = sunPos.z/abs(sunPos.z);
 
         float sunpos = abs(dot(vec.view, sunVec));
-        float decay  = pow(sunpos, 30.0)+pow(sunpos, 16.0)*0.8+pow2(sunpos)*0.125;
+        float decay  = pow(sunpos, 30.0)+pow(sunpos, 16.0)*0.8+sqr(sunpos)*0.125;
 
         vec2 deltacoord = (lightpos-coord)*s_godrayLength;
             deltacoord *= 1.0/samples;
@@ -258,7 +258,7 @@ void godrays() {
                 //if (tcoord.x<0.0 || tcoord.x>1.0 || tcoord.y<0.0 || tcoord.y>1.0) break;
 
                 vec3 temp = textureLod(colortex6, saturate(tcoord), 1).rgb;
-                godrays += temp*(1.0-pow2(float(i)/samples));
+                godrays += temp*(1.0-sqr(float(i)/samples));
             }
             godrays /= 8.0;
             godrays *= decay*sunGlow;
@@ -276,7 +276,7 @@ void simpleFog(inout vec3 returnCol, in float multi) {
     
     float falloff   = saturate(length(pos.world-pos.camera)/far);
         falloff     = linStep(falloff, 0.35, 0.999);
-        falloff     = pow2(falloff);
+        falloff     = sqr(falloff);
     
     vec3 skyCol     = falloff>0.0 ? getSky(vec.view) : fogVanilla;
 
@@ -365,7 +365,7 @@ void main() {
     #if (defined s_ssr || defined s_skyReflection)
         float roughnessFade = 1.0-linStep(pbr.roughness, 0.25, 0.5);
         float lightmapFade      = linStep(scene.lightmap.y, 0.66, 0.96);
-            lightmapFade        = pow2(lightmapFade);
+            lightmapFade        = sqr(lightmapFade);
 
         if((mask.terrain || translucency) && roughnessFade>0.01 && isEyeInWater==0) {
             rvec.sun        = reflect(vec.sun, normalize(scene.normal));
@@ -382,7 +382,7 @@ void main() {
             float fresnel   = 1.0;
             vec3 metalFresnel = vec3(1.0);
 
-            if (water) fresnel = pow2(linStep(baseFresnel, 0.0, 0.25))*0.96+0.04;
+            if (water) fresnel = sqr(linStep(baseFresnel, 0.0, 0.25))*0.96+0.04;
             else fresnel = pow4(linStep(baseFresnel, 0.0, 0.25))*finv(pbr.f0)+pbr.f0;
 
             reflectCol   = ref.screen.rgb;
@@ -405,10 +405,10 @@ void main() {
             if(metals >= 50 && metals <= 220) {
                 mat2x3 metalNK = getMetalIOR(metals);
                 metalFresnel = getComplexFresnel(metalNK[0], metalNK[1]);
-                returnCol   *= 1.0-vec3avg(pow2(metalFresnel))*(reflectAlpha*0.9+0.1)*roughnessFade;
-                reflectCol  *= pow2(metalFresnel)*reflectAlpha;
+                returnCol   *= 1.0-vec3avg(sqr(metalFresnel))*(reflectAlpha*0.9+0.1)*roughnessFade;
+                reflectCol  *= sqr(metalFresnel)*reflectAlpha;
             } else if (metals > 220) {
-                fresnel      = pow2(linStep(baseFresnel, 0.0, 0.25))*0.25+0.75;
+                fresnel      = sqr(linStep(baseFresnel, 0.0, 0.25))*0.25+0.75;
                 returnCol   *= mix(1.0, 1.0-fresnel, reflectAlpha);
                 returnCol   *= mix(albedoColor, vec3(0.1), reflectAlpha);
 

@@ -23,29 +23,29 @@ vec2 sincos(float x) {
     return vec2(sin(x), cos(x));
 }
 
-float pow2(float x) {
+float sqr(float x) {
     return x*x;
 }
 float pow3(float x) {
-    return pow2(x)*x;
+    return sqr(x)*x;
 }
 float pow4(float x) {
-    return pow2(pow2(x));
+    return sqr(sqr(x));
 }
 float pow5(float x) {
     return pow4(x)*x;
 }
 float pow6(float x) {
-    return pow2(pow3(x));
+    return sqr(pow3(x));
 }
 float pow8(float x) {
-    return pow2(pow4(x));
+    return sqr(pow4(x));
 }
 float pow10(float x) {
     return pow5(x)*pow5(x);
 }
 
-vec3 pow2(vec3 x) {
+vec3 sqr(vec3 x) {
     return x*x;
 }
 
@@ -70,7 +70,7 @@ float sumVec3(vec3 x) {
 }
 
 float smoothCubic(float x) {
-    return pow2(x) * (3.0-2.0*x);
+    return sqr(x) * (3.0-2.0*x);
 }
 
 float linStep(float x, float low, float high) {
@@ -99,7 +99,7 @@ float getFresnel(vec3 n, vec3 v, int exp, bool invert) {
     if (invert == false) fresnel = dot(normalize(n), v)*0.5+0.5;
     if (invert == true) fresnel = 1.0-(dot(normalize(n), v)*0.5+0.5);
     if (exp == 1) return fresnel;
-    if (exp == 2) return pow2(fresnel);
+    if (exp == 2) return sqr(fresnel);
     if (exp == 3) return pow3(fresnel);
     if (exp == 4) return pow4(fresnel);
     if (exp == 5) return pow5(fresnel);

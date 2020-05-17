@@ -80,7 +80,7 @@ void fakePorosity(inout vec3 scene) {
     vec3 col = scene;
     vec3 smoothCol = colorSat(col*col, 0.85)*0.95;
 
-    col     = mix(col, smoothCol, pbr.porosity*(1.0-pow2(roughness))*blockWetness);
+    col     = mix(col, smoothCol, pbr.porosity*(1.0-sqr(roughness))*blockWetness);
 
     scene = col;
 }

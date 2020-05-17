@@ -26,16 +26,16 @@ uniform vec4 daytime;
 
 flat out float light_flip;
 
-flat out mat2x3 light_color;
+flat out mat2x3 lightColor;
 
 #ifdef skypass
 flat out vec3 sky_color;
 #endif
 
 void make_colors() {
-    light_color[0]  = vec3(1.0, 0.2, 0.1)*nskylight_luma;
+    lightColor[0]  = vec3(1.0, 0.2, 0.1)*nskylight_luma;
 
-    light_color[1]  = vec3(1.0, 0.28, 0.0)*blocklight_luma*2.0;
+    lightColor[1]  = vec3(1.0, 0.28, 0.0)*blocklight_luma*2.0;
 
 
     #ifdef skypass

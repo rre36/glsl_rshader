@@ -31,7 +31,7 @@ uniform vec4 daytime;
 flat out float light_flip;
 
 flat out mat2x3 sky_color;
-flat out mat4x3 light_color;
+flat out mat4x3 lightColor;
 
 void make_colors() {
     vec3 sunlightSunrise;
@@ -58,8 +58,8 @@ void make_colors() {
         sunlightNight.b     = 0.0;
         sunlightNight      *= 0.5;
 
-    light_color[0]  = sunlightSunrise*daytime.x + sunlightNoon*daytime.y + sunlightSunset*daytime.z + sunlightNight*daytime.w;
-    light_color[0] *= pi * sunlight_luma;
+    lightColor[0]  = sunlightSunrise*daytime.x + sunlightNoon*daytime.y + sunlightSunset*daytime.z + sunlightNight*daytime.w;
+    lightColor[0] *= pi * sunlight_luma;
 
     vec3 skylightSunrise;
         skylightSunrise.r   = 1.0;
@@ -85,10 +85,10 @@ void make_colors() {
         skylightNight.b     = 1.0;
         skylightNight      *= 0.03;
 
-    light_color[1]  = skylightSunrise*daytime.x + skylightNoon*daytime.y + skylightSunset*daytime.z + skylightNight*daytime.w;
-    light_color[1] *= skylight_luma*0.5;
-    light_color[2]  = vec3(1.0, 0.22, 0.03)*blocklight_luma;
-    light_color[3]  = vec3(0.4, 0.7, 1.0)*0.05;
+    lightColor[1]  = skylightSunrise*daytime.x + skylightNoon*daytime.y + skylightSunset*daytime.z + skylightNight*daytime.w;
+    lightColor[1] *= skylight_luma*0.5;
+    lightColor[2]  = vec3(1.0, 0.22, 0.03)*blocklight_luma;
+    lightColor[3]  = vec3(0.4, 0.7, 1.0)*0.05;
 
     float lf    = dot(sunvec, vec3(0.0, 1.0, 0.0))*0.5+0.5;
         lf      = linStep(lf, 0.48, 0.499)*(1.0-linStep(lf, 0.501, 0.52));

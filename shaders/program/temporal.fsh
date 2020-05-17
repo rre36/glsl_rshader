@@ -121,9 +121,9 @@ vec4 texture_catmullrom(sampler2D tex, vec2 uv) {   //~5fps
     vec2 f      = coord-coord1;
 
     vec2 w0     = f * (-0.5 + f * (1.0 - (0.5 * f)));
-    vec2 w1     = 1.0 + pow2(f) * (-2.5 + (1.5 * f));
+    vec2 w1     = 1.0 + sqr(f) * (-2.5 + (1.5 * f));
     vec2 w2     = f * (0.5 + f * (2.0 - (1.5 * f)));
-    vec2 w3     = pow2(f) * (-0.5 + (0.5 * f));
+    vec2 w3     = sqr(f) * (-0.5 + (0.5 * f));
 
     vec2 w12    = w1+w2;
     vec2 delta12 = w2 * rcp(w12);
@@ -180,10 +180,10 @@ vec3 get_taa(vec3 scenecol, float scenedepth) {
 	vec3 max_col = max(scenecol,max(max(max(coltl,coltm),max(coltr,colml)),max(max(colmr,colbl),max(colbm,colbr))));
 /*
     vec3 c1     = scenecol + coltl + coltm + coltr + colml + colmr + colbl + colbm + colbr;
-    vec3 c2     = pow2(scenecol) + pow2(coltl) + pow2(coltm) + pow2(coltr) + pow2(colml) + pow2(colmr) + pow2(colbl) + pow2(colbm) + pow2(colbr);
+    vec3 c2     = sqr(scenecol) + sqr(coltl) + sqr(coltm) + sqr(coltr) + sqr(colml) + sqr(colmr) + sqr(colbl) + sqr(colbm) + sqr(colbr);
 
     vec3 c      = c1*rcp(9.0);
-    vec3 sigma  = sqrt(c2*rcp(9.0) - pow2(c));
+    vec3 sigma  = sqrt(c2*rcp(9.0) - sqr(c));
 */
     #ifdef taa_catmullrom
         vec3 repcol = texture_catmullrom(colortex4, rcoord).rgb;
@@ -198,7 +198,7 @@ vec3 get_taa(vec3 scenecol, float scenedepth) {
 
     //flicker reduction
     float ldiff     = flength(repcol - scenecol) * rcp(getLuma(repcol));
-        ldiff       = 1.0-saturate(pow2(ldiff)) * taa_antiflicker;
+        ldiff       = 1.0-saturate(sqr(ldiff)) * taa_antiflicker;
     
     vec2 vel    = (coord-rcoord)/pixelSize;
 

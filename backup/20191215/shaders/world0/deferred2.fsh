@@ -120,13 +120,13 @@ vec3 unpackNormal(vec3 x) {
 
 vec3 getSunDisk(in float sunGrad, in float hBottom, in vec3 sunDiscCol) {
     float sunDisc   = linStep(sunGrad, 1.0-(0.02+0.006), 1.0-(0.02));
-        sunDisc     = pow2(sunDisc);
+        sunDisc     = sqr(sunDisc);
 
     float sunLimb   = linStep(hBottom, 0.58, 0.70);
-        sunLimb     = pow2(sunLimb);
+        sunLimb     = sqr(sunLimb);
 
     float sunLimb2   = 1.0-linStep(hBottom, 0.66, 0.71);
-        sunLimb2     = pow2(sunLimb2);
+        sunLimb2     = sqr(sunLimb2);
 
     vec3 sunDiscColMod = mix(vec3(1.0), vec3(1.0, 0.0, 0.0), sunLimb)*sunLimb2;
 
@@ -156,9 +156,9 @@ void skyGradient() {
     float sunGrad   = 1.0-dot(sgVec, nFrag);
     float moonGrad  = 1.0-dot(mgVec, nFrag);
 
-    float horizonGlow = saturate(pow2(sunGrad));
+    float horizonGlow = saturate(sqr(sunGrad));
         horizonGlow = pow3(linStep(horizonGrad, 0.08-horizonGlow*0.1, 0.33-horizonGlow*0.05))*horizonGlow;
-        horizonGlow = pow2(horizonGlow*1.3);
+        horizonGlow = sqr(horizonGlow*1.3);
         horizonGlow = saturate(horizonGlow*0.75);
 
     float sunGlow   = linStep(sunGrad, 0.5, 0.98);
@@ -179,7 +179,7 @@ void skyGradient() {
         sky         = mix(sky, moonColor, moonGlow*timeNight);
 
     float sunLimb   = 1.0-linStep(hBottom, 0.68, 0.74);
-        sunLimb     = pow2(sunLimb);
+        sunLimb     = sqr(sunLimb);
 
     float sunAlbedo = sstep(sunGrad, 0.85, 0.95)*(1.0-timeMoon)*sunLimb;
     float moonAlbedo = sstep(moonGrad, 0.85, 0.95)*timeNight;

@@ -47,7 +47,7 @@ in vec2 coord;
 
 flat in vec3 atmos_multiscatter;
 
-flat in mat4x3 light_color;
+flat in mat4x3 lightColor;
 flat in mat2x3 sky_color;
 
 uniform sampler2D colortex0;
@@ -80,8 +80,8 @@ float depth_lin(float depth) {
 }
 
 float get_mie(float x, float g) {
-    float temp  = 1.0 + pow2(g) - 2.0*g*x;
-    return (1.0 - pow2(g)) / ((4.0*pi) * temp*(temp*0.5+0.5));
+    float temp  = 1.0 + sqr(g) - 2.0*g*x;
+    return (1.0 - sqr(g)) / ((4.0*pi) * temp*(temp*0.5+0.5));
 }
 
 vec3 get_sky(vec3 viewvec) {
@@ -108,7 +108,7 @@ vec3 get_sky(vec3 viewvec) {
 
     vec3 sky    = sky_color[0]*zenith;
         sky     = mix(sky, sky_color[1], horizon);
-        sky    += light_color[0]*sunscatter;
+        sky    += lightColor[0]*sunscatter;
 
     return sky * 0.9;
 }
@@ -123,7 +123,7 @@ vec3 get_sun(vec3 viewvec) {
     float s   = 1.0-linStep(sun, radius, radius + 0.0004);
         //s    *= 1.0-sstep(sun, 0.004, 0.0059)*0.5;
 
-    return s*light_color[0]*100.0;
+    return s*lightColor[0]*100.0;
 }
 
 vec3 get_moon(vec3 viewvec, vec3 albedo) {
@@ -133,7 +133,7 @@ vec3 get_moon(vec3 viewvec, vec3 albedo) {
 
     float s   = 1.0-linStep(sun, 0.03, 0.08);
 
-    return albedo*s*light_color[3]*4.0;
+    return albedo*s*lightColor[3]*4.0;
 }
 
 #include "/lib/atmos/phase.glsl"

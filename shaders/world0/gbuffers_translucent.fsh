@@ -38,7 +38,7 @@ flat in vec3 normal;
 
 flat in float light_flip;
 
-flat in mat4x3 light_color;
+flat in mat4x3 lightColor;
 
 uniform sampler2D gcolor;
 
@@ -118,14 +118,14 @@ vec3 get_light(vec3 scenecol, vec3 normal, vec2 lmap, float ao) {
     get_ldirect(shadow, shadowcol, diff>0.0);
 
     float diff_lit  = min(diff, shadow);
-    vec3 direct_col     = sunAngle<0.5 ? light_color[0] : light_color[3];
+    vec3 direct_col     = sunAngle<0.5 ? lightColor[0] : lightColor[3];
     vec3 direct_light   = diff_lit*shadowcol*direct_col*light_flip;
-    vec3 indirect_light = lmap.y*light_color[1];
+    vec3 indirect_light = lmap.y*lightColor[1];
         indirect_light += vec3(0.5, 0.7, 1.0)*0.01*minlight_luma;
         indirect_light *= ao;
 
     vec3 result     = direct_light + indirect_light;
-        result     += get_lblock(light_color[2], lmap.x)*ao;
+        result     += get_lblock(lightColor[2], lmap.x)*ao;
 
     return scenecol * result;
 }
@@ -139,9 +139,6 @@ void main() {
 
     vec3 hue    = normalize(scenecol.rgb);
 
-    scenecol.rgb = get_light(scenecol.rgb, normal, coord[1], tint.a);
-
-
     #ifdef g_terrain
         if (mat_id == 102) {
             scenecol.rgb = vec3(0.04, 0.2, 1.0) * 0.1;
@@ -149,6 +146,9 @@ void main() {
             hue      = vec3(1.0);
         }
     #endif
+
+    scenecol.rgb = get_light(scenecol.rgb, normal, coord[1], tint.a);
+
 
     scenecol.rgb *= 1.0 + (1.0-scenecol.a);
 

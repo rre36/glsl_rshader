@@ -48,7 +48,7 @@ float temporal_exp() {
     float exp_curr  = clamp(texture(colortex4, vec2(0.5)).a, 0.0, 65535.0);
     float exp_targ  = rcp(get_imageLuma(colortex0));
         exp_targ    = clamp(exp_targ, 2.0, 50.0 * rcp(exposure_minlum) + nightVision*15.0);
-        exp_targ    = log2(exp_targ * rcp(5.0));    //adjust this
+        exp_targ    = log2(exp_targ * rcp(6.0));    //adjust this
         exp_targ    = 1.2 * pow(2.0, exp_targ);
 
     return mix(exp_curr, exp_targ, 0.035 * exposure_speed * (frameTime * crcp(0.033)));

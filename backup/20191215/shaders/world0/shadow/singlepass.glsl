@@ -216,7 +216,7 @@ void main() {
     sdata.ao            = 1.0;
     sdata.specular      = 0.0;
     sdata.shadowcolor   = vec3(1.0);
-    sdata.vanillaAo     = flatten(pow2(sample4), 0.95);
+    sdata.vanillaAo     = flatten(sqr(sample4), 0.95);
 
     returnCol           = scene.albedo;
 
@@ -229,7 +229,7 @@ void main() {
 
 
         float worldDistance = length(pos.world.xyz-pos.camera.xyz);
-        float falloff       = 1.0-pow2(linStep(worldDistance, 100.0, 160.0));
+        float falloff       = 1.0-sqr(linStep(worldDistance, 100.0, 160.0));
 
         if (scene.sample3.r>0.26 && scene.sample3.r<0.28) sdata.diffuse = 1.0;
         else diffuseLambert(scene.normal);

@@ -61,7 +61,7 @@ void getLabNormal() {
         texnormal       = texnormal*2.0-(254.0/255.0);
 
         #ifdef s_usePBR
-            pbr.ao          = pow2(length(texnormal));
+            pbr.ao          = sqr(length(texnormal));
         #endif
 
         texnormal       = normalize(texnormal);
@@ -83,7 +83,7 @@ void getLabPbr() {
     vec4 texsample  = pbrSample;
     pbr.roughness   = 1.0-texsample.r;
     pbr.roughness   = max(pbr.roughness, 0.02);
-    pbr.f0          = pow2(clamp(texsample.g, 0.0, 229.0/255.0));
+    pbr.f0          = sqr(clamp(texsample.g, 0.0, 229.0/255.0));
 
     #ifndef translucentPass
     pbr.porosity    = int(texsample.b*255.0)<65 ? linStep(texsample.b, 0, 64.0/255.0) : 0.0;

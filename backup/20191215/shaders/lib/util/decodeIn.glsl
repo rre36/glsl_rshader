@@ -34,6 +34,6 @@ void decodeData() {
     mat.emissive    = unmap(matData, 0.71, 0.90);
 
     pbr.f0          = pbrDecode.x;
-    pbr.roughness   = pow2(pbrDecode.y);
+    pbr.roughness   = sqr(pbrDecode.y);
     pbr.metallic    = pbrDecode.z;
 }

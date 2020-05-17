@@ -25,7 +25,7 @@
 
 in vec2 coord;
 
-flat in mat2x3 light_color;
+flat in mat2x3 lightColor;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
@@ -61,12 +61,12 @@ vec3 get_light(vec3 scenecol, vec2 lmap, float ao, int matID) {
     vec3 shadowcol  = vec3(1.0);
     lmap.y          = pow3(lmap.y);
 
-    vec3 indirect_light = light_color[0];
+    vec3 indirect_light = lightColor[0];
         indirect_light += vec3(0.5, 0.7, 1.0)*0.01*minlight_luma;
         indirect_light *= ao;
 
     vec3 result     = indirect_light;
-        result     += get_lblock(light_color[1], lmap.x)*ao;
+        result     += get_lblock(lightColor[1], lmap.x)*ao;
 
     return scenecol * result;
 }
@@ -114,7 +114,7 @@ void main() {
         scenecol.rgb    = vec3(1.0);
         #endif
 
-        float ao        = pow2(scenecol.a)*0.8+0.2;
+        float ao        = sqr(scenecol.a)*0.8+0.2;
 
         #ifdef ambientOcclusion_enabled
             vec4 tex3   = textureBilateral(colortex3, depthtex1, 2, scenedepth);
@@ -124,7 +124,7 @@ void main() {
         scenecol.rgb    = get_light(scenecol.rgb, scenelmap, ao, matID);
 
         #if DEBUG_VIEW==2
-        scenecol.rgb    = ao * light_color[0] * 2.0;
+        scenecol.rgb    = ao * lightColor[0] * 2.0;
         #endif
     }
 

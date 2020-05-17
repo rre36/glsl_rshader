@@ -217,7 +217,7 @@ void reflect_cloud(inout vec3 scene, in vec3 viewvec) {
 
     vec3 color          = mix(rayleighColor, lightColor, saturate(scatter));
 
-    cloud               = saturate(cloud*pow2(fadeFactor));
+    cloud               = saturate(cloud*sqr(fadeFactor));
     scene               = mix(scene, color*2.0, cloud);
 }
 #elif s_cloudMode==1
@@ -287,7 +287,7 @@ void reflect_cloud(inout vec3 scenecol, in vec3 viewvec) {
 
         vec3 color  = mix(skylight, sunlight, saturate(scatter));
         cloud               = saturate(cloud);
-        scenecol            = mix(scenecol, color, pow2(cloud)*pow3(fade));
+        scenecol            = mix(scenecol, color, sqr(cloud)*pow3(fade));
     }
 }
 #endif

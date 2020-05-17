@@ -7,7 +7,7 @@ void diffuseLambert(in vec3 normal) {
 }
 
 void specGGX(in vec3 normal) {
-    float roughness = pow2(pbr.roughness);
+    float roughness = sqr(pbr.roughness);
     #ifdef s_usePBR
         float F0        = pbr.f0;
     #else

@@ -29,14 +29,14 @@ vec3 rcp(vec3 x) {
     return crcp(x);
 }
 
-float pow2(float x) {
+float sqr(float x) {
     return x*x;
 }
 float pow3(float x) {
-    return pow2(x)*x;
+    return sqr(x)*x;
 }
 float pow4(float x) {
-    return pow2(x)*pow2(x);
+    return sqr(x)*sqr(x);
 }
 float pow5(float x) {
     return pow4(x)*x;
@@ -48,15 +48,15 @@ float pow8(float x) {
     return pow4(x)*pow4(x);
 }
 
-vec2 pow2(vec2 x) {
+vec2 sqr(vec2 x) {
     return x*x;
 }
 
-vec3 pow2(vec3 x) {
+vec3 sqr(vec3 x) {
     return x*x;
 }
 
-vec4 pow2(vec4 x) {
+vec4 sqr(vec4 x) {
     return x*x;
 }
 

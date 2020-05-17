@@ -46,7 +46,7 @@ void main() {
     vec4 tex2       = stex(colortex2);
     vec4 tex3       = stex(colortex3);
 
-    vec3 translucent_albedo = pow2(decode3x8(tex2.g));
+    vec3 translucent_albedo = sqr(decode3x8(tex2.g));
 
     scenecol.rgb    = blend_translucencies(scenecol.rgb, tex3, translucent_albedo);
 

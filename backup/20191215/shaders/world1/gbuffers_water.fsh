@@ -189,7 +189,7 @@ void diffuseLambert(in vec3 normal) {
 }
 
 void specGGX(in vec3 normal) {
-    float roughness = pow2(pbr.roughness);
+    float roughness = sqr(pbr.roughness);
     if (water==1) roughness = 0.00002;
     float F0        = 0.08;
     if (pbr.metallic>0.5) {
@@ -278,7 +278,7 @@ void getDirectLight(bool diffuseLit) {
 float getLightmap(in float lightmap) {
     lightmap = 1-clamp(lightmap*1.1, 0.0, 1.0);
     lightmap *= 5.0;
-    lightmap = 1.0 / pow2(lightmap+0.1);
+    lightmap = 1.0 / sqr(lightmap+0.1);
     lightmap = sstep(lightmap, 0.025, 1.0);
     return lightmap;
 }
@@ -386,7 +386,7 @@ vec4 inputSample        = texture(tex, coord);
 
     applyShading();
 
-    if (water==1) rdata.scene.a = pow2(inputSample.a);
+    if (water==1) rdata.scene.a = sqr(inputSample.a);
 
     #ifdef s_usePBR
         if (water==0) pbr.roughness = max(pbr.roughness, sqrt(0.007));

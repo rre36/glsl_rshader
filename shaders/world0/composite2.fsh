@@ -24,7 +24,9 @@
 
 in vec2 coord;
 
-flat in mat4x3 light_color;
+flat in float light_flip;
+
+flat in mat4x3 lightColor;
 
 uniform sampler2D colortex0;
 uniform sampler2D colortex1;
@@ -40,12 +42,16 @@ uniform int isEyeInWater;
 
 uniform float eyeAltitude;
 uniform float far;
+uniform float sunAngle;
 
 uniform vec2 taaOffset;
 uniform vec2 pixelSize, viewSize;
 
 uniform ivec2 eyeBrightness;
 uniform ivec2 eyeBrightnessSmooth;
+
+uniform vec3 lightvec, lightvecView;
+uniform vec3 sunvec;
 
 uniform mat4 gbufferModelView, gbufferModelViewInverse;
 uniform mat4 gbufferProjection, gbufferProjectionInverse;
@@ -82,7 +88,7 @@ vec3 water_fog(vec3 scenecolor, float d, vec3 color) {
     float density   = dist*6.5e-1;
 
     const vec3 absorptionCoeff  = vec3(1.0, 0.4, 0.21);
-    const vec3 scatterCoeff     = vec3(0.04, 0.1, 0.6) * 0.5;
+    const vec3 scatterCoeff     = vec3(0.04, 0.1, 0.6) * 0.3;
 
     vec3 scatter    = 1.0-exp(-density * scatterCoeff);
         scatter    *= max(expf(-absorptionCoeff * density), expf(-absorptionCoeff * pi));
@@ -94,6 +100,7 @@ vec3 water_fog(vec3 scenecolor, float d, vec3 color) {
 
 #include "/lib/atmos/project.glsl"
 #include "/lib/util/bicubic.glsl"
+#include "/lib/atmos/phase.glsl"
 
 vec3 apply_clouds(mat2x4 data, vec3 scenecol, vec3 skycol) {
     scenecol    = mix(skycol, scenecol, data[0].a);
@@ -131,12 +138,18 @@ void main() {
 
     bool water      = mat_id == 102;
 
-    vec3 translucent_albedo = pow2(decode3x8(tex2.g));
+    vec3 translucent_albedo = sqr(decode3x8(tex2.g));
 
     float dist0     = distance(spos0, gbufferModelViewInverse[3].xyz);
     float dist1     = distance(spos1, gbufferModelViewInverse[3].xyz);
 
     float cave_fix  = linStep(eyeBrightnessSmooth.y/240.0, 0.1, 0.9);
+
+    float vdotl     = dot(normalize(viewpos1), lightvecView);
+
+    vec3 fogcol     = (sunAngle<0.5 ? lightColor[0] : lightColor[3]) * light_flip * hg_mie(vdotl, 0.68) * sqr(cave_fix);
+        fogcol     *= mix(0.33, 1.0, sqrt(abs(lightvec.y)));
+        fogcol     += lightColor[1] * cave_fix * rcp(pi);
 
     vec3 skycol     = textureBicubic(colortex5, projectSky(normalize(spos1))).rgb;
 
@@ -158,7 +171,7 @@ void main() {
     #endif
 
     if (translucent && isEyeInWater==0){
-        if (water) scenecol.rgb = water_fog(scenecol.rgb, dist1-dist0, light_color[1]*cave_fix);
+        if (water) scenecol.rgb = water_fog(scenecol.rgb, dist1-dist0, fogcol);
         else if (landMask(scenedepth1)) scenecol.rgb = simple_fog(scenecol.rgb, dist1-dist0, skycol*cave_fix);
     }
 
@@ -168,14 +181,14 @@ void main() {
 
     if (landMask(scenedepth0) && isEyeInWater==0) scenecol.rgb = simple_fog(scenecol.rgb, dist0, skycol*cave_fix);
 
-    if (isEyeInWater==1) scenecol.rgb = water_fog(scenecol.rgb, dist0, light_color[1]*cave_fix);
+    if (isEyeInWater==1) scenecol.rgb = water_fog(scenecol.rgb, dist0, fogcol);
 
     if (mat_id == 3) {
         if (landMask(scenedepth0)) scenecol.rgb = scenecol.rgb*0.6 + vec3(0.5*v3avg(scenecol.rgb));
         else scenecol.rgb = scenecol.rgb*0.7 + vec3(0.8*v3avg(scenecol.rgb));
     }
 
-    //scenecol.rgb = pow2(scenenormal * 0.5 + 0.5);
+    //scenecol.rgb = sqr(scenenormal * 0.5 + 0.5);
 
     /*DRAWBUFFERS:0*/
     gl_FragData[0]  = makeDrawbuffer(scenecol);

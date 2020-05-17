@@ -44,7 +44,7 @@ c4  - temporals (full)
 
 in vec2 coord;
 
-flat in mat2x3 light_color;
+flat in mat2x3 lightColor;
 flat in vec3 sky_color;
 
 uniform sampler2D colortex0;

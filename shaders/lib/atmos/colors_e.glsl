@@ -21,14 +21,14 @@
 #define skylight_luma 1.0
 #define blocklight_luma 1.0
 
-flat out mat3x3 light_color;
+flat out mat3x3 lightColor;
 
 void make_colors() {
-    light_color[0]  = vec3(0.5, 0.3, 1.0);
-    light_color[0] *= sunlight_luma*0.1;
+    lightColor[0]  = vec3(0.5, 0.3, 1.0);
+    lightColor[0] *= sunlight_luma*0.1;
 
-    light_color[1]  = vec3(0.4, 0.2, 1.0);
-    light_color[1] *= skylight_luma*0.3;
+    lightColor[1]  = vec3(0.4, 0.2, 1.0);
+    lightColor[1] *= skylight_luma*0.3;
 
-    light_color[2]  = vec3(1.0, 0.28, 0.0)*blocklight_luma;
+    lightColor[2]  = vec3(1.0, 0.28, 0.0)*blocklight_luma;
 }

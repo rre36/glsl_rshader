@@ -51,7 +51,7 @@ vec3 getComplexFresnel(in vec3 n, in vec3 k) {
     vec3 NK   = n*n + K;
 
     vec3 CN     = (vDotL*2.0)*n;
-    vec3 C      = vec3(pow2(vDotL));
+    vec3 C      = vec3(sqr(vDotL));
 
     vec3 rsN    = NK-CN+C;
     vec3 rsD    = NK+CN+C;
